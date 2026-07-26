@@ -13,18 +13,8 @@ Extract and structure the response into a JSON object containing:
 - priority: Emergency priority rating (e.g. "P1 - Immediate Intervention Dispatch")
 - impact_radius: Estimated impact zone (e.g. "20 - 35 km")
 - risk_index: Risk index score (e.g. "9.2 / 10")
-- ai_decision_intelligence: Object containing:
-    - confidence_score: Percentage string (e.g. "95%")
-    - severity_reasoning: Clear explanation of WHY this severity was assigned
-    - risk_factors: Array of risk factor strings
-    - supporting_evidence: Array of grounded evidence points from search results
-    - reasoning_summary: Concise summary of AI reasoning
-    - verification_status: Status string (e.g. "Multi-Source Verified")
-- predictive_intelligence: Object containing:
-    - escalation_risk: { "value": "78%", "trend": "up", "label": "High Escalation Risk" }
-    - hospital_load: { "value": "85%", "trend": "up", "label": "Critical Capacity Strain" }
-    - road_accessibility: { "value": "35%", "trend": "down", "label": "Impaired Transit" }
-    - resource_demand: { "value": "92%", "trend": "up", "label": "Rapid Mobilization" }
+- ai_decision_intelligence: Object containing confidence_score, severity_reasoning, risk_factors list, supporting_evidence list, reasoning_summary, verification_status
+- predictive_intelligence: Object containing escalation_risk, hospital_load, road_accessibility, resource_demand (each with value, trend, label)
 - resource_reasoning: Array of objects, each with "resource" and "reason" explaining WHY it was recommended
 - executive_command_brief: Object with "summary", "priorities", "actions", "advisory" for a 30-second briefing
 - source_verification: Object with "government_advisories", "weather_reports", "news_reports", "overall_confidence"

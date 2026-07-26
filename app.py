@@ -74,24 +74,53 @@ def analyze_disaster():
         }), 500
 
 
+@app.route("/api/copilot/chat", methods=["POST"])
+def copilot_chat():
+    """
+    AI Copilot Chat Endpoint.
+    Receives JSON: { "message": "...", "context": { ... } }
+    Returns operational AI answer grounded in current disaster analysis.
+    """
+    try:
+        data = request.get_json(silent=True) or {}
+        user_message = data.get("message", "").strip()
+        analysis_context = data.get("context", {})
+
+        if not user_message:
+            return jsonify({
+                "status": "error",
+                "answer": "Current data does not contain this information."
+            }), 400
+
+        logger.info(f"Processing AI Copilot query: '{user_message}'")
+        answer = disaster_agent.answer_copilot_question(user_message, analysis_context)
+
+        return jsonify({
+            "status": "success",
+            "answer": answer
+        }), 200
+
+    except Exception as e:
+        logger.error(f"Error processing Copilot chat query: {e}", exc_info=True)
+        return jsonify({
+            "status": "error",
+            "answer": "Current data does not contain this information."
+        }), 500
+
+
 @app.route("/api/report/pdf", methods=["POST"])
 def download_report_pdf():
     """
     Generates and returns a downloadable PDF Incident Report.
-    Receives analyzed disaster JSON payload in request body.
     """
     try:
         disaster_data = request.get_json(silent=True) or {}
-        
-        # Structure report content
         report_data = report_agent.generate_incident_report_data(disaster_data)
         
-        # Create temporary PDF file
         temp_dir = tempfile.gettempdir()
         pdf_filename = f"Incident_Report_{int(request.date.timestamp() if request.date else 1000)}.pdf"
         output_pdf_path = os.path.join(temp_dir, pdf_filename)
         
-        # Generate PDF using FPDF2 engine
         report_agent.generate_pdf(report_data, output_pdf_path)
 
         disaster_name = str(disaster_data.get("disaster_type", "Disaster")).replace(" ", "_")

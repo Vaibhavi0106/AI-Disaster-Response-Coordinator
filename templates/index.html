@@ -71,7 +71,7 @@
             </div>
         </section>
 
-        <!-- ADDITION 2: Live AI Agent Execution Stepper Box -->
+        <!-- Live AI Agent Execution Stepper Box -->
         <div id="loadingBox" class="loading-box glass-panel">
             <div class="spinner-radar"></div>
             <h4 class="text-white fw-bold mb-2">Live AI Agent Execution Workflow</h4>
@@ -136,7 +136,7 @@
                 </div>
             </div>
 
-            <!-- ADDITION 5: 30-Second Executive Command Brief Panel -->
+            <!-- 30-Second Executive Command Brief Panel -->
             <div class="glass-panel p-4 mb-4 border-start border-4 border-warning">
                 <div class="d-flex justify-content-between align-items-center mb-3">
                     <h5 class="text-warning fw-bold mb-0 d-flex align-items-center gap-2">
@@ -188,7 +188,7 @@
                         </p>
                     </div>
 
-                    <!-- ADDITION 1: Collapsible AI Decision Intelligence Panel -->
+                    <!-- Collapsible AI Decision Intelligence Panel -->
                     <div class="glass-panel p-4 mb-4 border-start border-4 border-cyan">
                         <div class="d-flex justify-content-between align-items-center">
                             <h5 class="text-cyan fw-bold mb-0 d-flex align-items-center gap-2">
@@ -200,7 +200,6 @@
                         </div>
 
                         <div class="collapse show mt-3" id="decisionPanel">
-                            <!-- AI Confidence Meter -->
                             <div class="mb-3 p-3 bg-dark rounded border border-cyan">
                                 <div class="d-flex justify-content-between align-items-center mb-1">
                                     <strong class="text-white font-mono fs-7">AI SEVERITY CLASSIFICATION CONFIDENCE</strong>
@@ -211,13 +210,11 @@
                                 </div>
                             </div>
 
-                            <!-- Severity Reasoning -->
                             <div class="mb-3">
                                 <strong class="text-warning font-mono d-block mb-1 fs-7">WHY WAS THIS SEVERITY ASSIGNED?</strong>
                                 <p id="aiSeverityReasoning" class="text-white fs-7 mb-0 fw-semibold">Analyzing classification factors...</p>
                             </div>
 
-                            <!-- Risk Factors Grid -->
                             <div class="row g-2 mb-3">
                                 <div class="col-md-6">
                                     <strong class="text-danger font-mono d-block mb-1 fs-7">IDENTIFIED RISK FACTORS</strong>
@@ -233,14 +230,13 @@
                                 </div>
                             </div>
 
-                            <!-- Reasoning Summary & Verification -->
                             <div class="d-flex justify-content-between align-items-center pt-2 border-top border-secondary fs-7 font-mono">
                                 <span class="text-white"><i class="bi bi-check-circle-fill text-success me-1"></i> Status: <strong id="aiVerificationStatus" class="text-cyan">Multi-Source Verified</strong></span>
                             </div>
                         </div>
                     </div>
 
-                    <!-- Leaflet Tactical Map (With Map Wrapper) -->
+                    <!-- Leaflet Tactical Map -->
                     <div class="glass-panel p-4 mb-4">
                         <div class="d-flex justify-content-between align-items-center mb-3">
                             <h5 class="text-warning fw-bold mb-0 d-flex align-items-center gap-2">
@@ -253,7 +249,7 @@
                         </div>
                     </div>
 
-                    <!-- Affected Locations Selector (Click to Center Map) -->
+                    <!-- Affected Locations Selector -->
                     <div class="glass-panel p-4 mb-4">
                         <h5 class="text-warning fw-bold mb-2 d-flex align-items-center justify-content-between">
                             <span><i class="bi bi-pin-map-fill text-danger me-2"></i> Impacted Operational Sectors</span>
@@ -275,10 +271,10 @@
                     </div>
                 </div>
 
-                <!-- Right Column: Predictive Card, Weather, Hotlines, Resources with Reasoning, Advisories & Verification -->
+                <!-- Right Column: Predictive Card, Weather, Hotlines, Resources, Advisories & Verification -->
                 <div class="col-lg-5">
                     
-                    <!-- ADDITION 3: Predictive Risk Assessment Card -->
+                    <!-- Predictive Risk Assessment Card -->
                     <div class="glass-panel p-4 mb-4 border-start border-4 border-warning">
                         <div class="d-flex justify-content-between align-items-center mb-3">
                             <h5 class="text-warning fw-bold mb-0 d-flex align-items-center gap-2">
@@ -352,13 +348,13 @@
                         </div>
                     </div>
 
-                    <!-- ADDITION 4: Recommended Rescue Resources with Reasoning -->
+                    <!-- Recommended Rescue Resources with Reasoning -->
                     <div class="glass-panel p-4 mb-4">
                         <h5 class="text-warning fw-bold mb-3 d-flex align-items-center gap-2">
                             <i class="bi bi-box-seam-fill text-info"></i> Recommended Rescue Assets & Reasoning
                         </h5>
                         <div id="resourcesList">
-                            <!-- Populated via JS with Reasoning explanations -->
+                            <!-- Populated via JS -->
                         </div>
                     </div>
 
@@ -387,7 +383,7 @@
                         </div>
                     </div>
 
-                    <!-- ADDITION 6: Source Verification & Confidence Stream -->
+                    <!-- Source Verification Panel -->
                     <div class="glass-panel p-4">
                         <h5 class="text-warning fw-bold mb-3 d-flex align-items-center gap-2">
                             <i class="bi bi-journal-check text-success"></i> Intelligence Source Verification
@@ -412,6 +408,56 @@
 
         </div>
 
+    </div>
+
+    <!-- FLOATING AI EMERGENCY OPERATIONS COPILOT -->
+    <button id="copilotToggleBtn" class="copilot-floating-btn" title="Open AI EOC Copilot">
+        <i class="bi bi-robot text-warning fs-5"></i>
+        <span>AI Copilot</span>
+    </button>
+
+    <div id="copilotPanel" class="copilot-panel">
+        <!-- Header -->
+        <div class="copilot-header">
+            <div class="d-flex align-items-center gap-2">
+                <i class="bi bi-robot text-warning fs-5"></i>
+                <div>
+                    <strong class="text-white font-mono fs-7 d-block">AI EOC COPILOT</strong>
+                    <small class="text-cyan font-mono fs-8">Grounded Operational Assistant</small>
+                </div>
+            </div>
+            <button id="copilotCloseBtn" class="btn btn-sm text-white fs-5 p-0 border-0" title="Close Panel">
+                <i class="bi bi-x-lg"></i>
+            </button>
+        </div>
+
+        <!-- Chat History Area -->
+        <div id="copilotMessages" class="copilot-body">
+            <div class="copilot-msg msg-ai">
+                <div>Hello! I am your AI Emergency Operations Copilot. Ask me any question about the current disaster telemetry, severity classification, hospitals, or rescue recommendations.</div>
+                <div class="copilot-msg-meta">[SYSTEM ONLINE]</div>
+            </div>
+        </div>
+
+        <!-- Suggested Prompt Chips Row -->
+        <div class="copilot-chips-row" id="copilotChipsRow">
+            <span class="copilot-chip" data-question="Summarize the situation in one sentence.">Situation Summary</span>
+            <span class="copilot-chip" data-question="What should responders do first?">Recommended Actions</span>
+            <span class="copilot-chip" data-question="Which hospitals are closest and what is their status?">Hospital Status</span>
+            <span class="copilot-chip" data-question="How many rescue teams are recommended and why?">Resource Allocation</span>
+            <span class="copilot-chip" data-question="Why is this classified as High/Critical Severity?">Explain AI Decision</span>
+            <span class="copilot-chip" data-question="What public advisories are currently in effect?">Public Advisory</span>
+            <span class="copilot-chip" data-question="Give me a briefing for the district collector.">Executive Brief</span>
+            <span class="copilot-chip" data-question="What happens if rainfall increases further?">Predict Future Risk</span>
+        </div>
+
+        <!-- Footer Input Form -->
+        <div class="copilot-footer">
+            <input type="text" id="copilotInput" class="copilot-input" placeholder="Ask Copilot a question..." autocomplete="off">
+            <button id="copilotSendBtn" class="copilot-send-btn">
+                <i class="bi bi-send-fill"></i>
+            </button>
+        </div>
     </div>
 
     <!-- Footer -->

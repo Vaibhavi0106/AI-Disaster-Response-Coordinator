@@ -15,7 +15,7 @@
   --accent-cyan: #00e5ff;        /* Electric Cyan */
   --accent-emerald: #00e676;     /* Cyber Emerald */
   
-  /* High-Contrast Text (Zero Grey) */
+  /* High-Contrast Text */
   --text-white: #ffffff;
   --text-cyan: #00e5ff;
   --text-yellow: #FFC107;
@@ -272,7 +272,7 @@ h1, h2, h3, h4, h5, h6, .brand-text {
   color: #ffffff;
 }
 
-/* Severity Badges (Deep Crimson #B22222, Amber Yellow #FFC107, Emerald #00e676) */
+/* Severity Badges */
 .badge-severity {
   font-size: 0.95rem;
   font-weight: 900;
@@ -448,6 +448,171 @@ h1, h2, h3, h4, h5, h6, .brand-text {
 
 .btn-audio-speak:hover {
   background: #ff5252;
+}
+
+/* ==========================================================================
+   FLOATING AI EMERGENCY OPERATIONS COPILOT PANEL STYLING
+   ========================================================================== */
+
+.copilot-floating-btn {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  z-index: 1050;
+  background: var(--primary-red);
+  color: #ffffff;
+  border: 2px solid var(--accent-yellow);
+  border-radius: 50px;
+  padding: 0.85rem 1.6rem;
+  font-weight: 800;
+  font-size: 1.05rem;
+  cursor: pointer;
+  box-shadow: 0 8px 30px rgba(178, 34, 34, 0.7);
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  transition: all 0.3s ease;
+}
+
+.copilot-floating-btn:hover {
+  transform: scale(1.05);
+  background: #d32f2f;
+  box-shadow: 0 10px 35px rgba(255, 193, 7, 0.6);
+}
+
+.copilot-panel {
+  display: none;
+  position: fixed;
+  bottom: 90px;
+  right: 24px;
+  width: 420px;
+  height: 580px;
+  max-width: 92vw;
+  max-height: 80vh;
+  z-index: 1050;
+  background: var(--bg-card);
+  border: 2px solid var(--accent-yellow);
+  border-radius: 18px;
+  box-shadow: 0 16px 50px rgba(0, 0, 0, 0.9);
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.copilot-header {
+  background: #111111;
+  padding: 0.9rem 1.25rem;
+  border-bottom: 1.5px solid var(--accent-yellow);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.copilot-body {
+  flex: 1;
+  padding: 1rem;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  background: #1e1e1e;
+}
+
+.copilot-msg {
+  display: flex;
+  flex-direction: column;
+  max-width: 85%;
+  font-size: 0.9rem;
+  line-height: 1.4;
+}
+
+.copilot-msg.msg-user {
+  align-self: flex-end;
+  background: #1e3a8a;
+  color: #ffffff;
+  padding: 0.65rem 0.95rem;
+  border-radius: 14px 14px 2px 14px;
+  border: 1px solid var(--accent-cyan);
+}
+
+.copilot-msg.msg-ai {
+  align-self: flex-start;
+  background: #2b2b2b;
+  color: #ffffff;
+  padding: 0.75rem 1rem;
+  border-radius: 14px 14px 14px 2px;
+  border: 1px solid var(--accent-yellow);
+}
+
+.copilot-msg-meta {
+  font-size: 0.7rem;
+  color: var(--accent-yellow);
+  margin-top: 0.25rem;
+  font-weight: 700;
+}
+
+.copilot-chips-row {
+  padding: 0.6rem 0.85rem;
+  background: #111111;
+  border-top: 1px solid var(--border-contrast);
+  display: flex;
+  gap: 0.4rem;
+  overflow-x: auto;
+  white-space: nowrap;
+}
+
+.copilot-chip {
+  background: #252525;
+  border: 1px solid var(--accent-yellow);
+  color: #ffffff;
+  padding: 0.3rem 0.75rem;
+  border-radius: 16px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: inline-block;
+}
+
+.copilot-chip:hover {
+  background: var(--accent-yellow);
+  color: #000000;
+}
+
+.copilot-footer {
+  padding: 0.75rem 1rem;
+  background: #111111;
+  border-top: 1.5px solid var(--accent-yellow);
+  display: flex;
+  gap: 0.5rem;
+}
+
+.copilot-input {
+  background: #1f2430;
+  border: 1px solid var(--border-contrast);
+  color: #ffffff;
+  border-radius: 10px;
+  padding: 0.6rem 0.85rem;
+  font-size: 0.9rem;
+  flex: 1;
+}
+
+.copilot-input:focus {
+  outline: none;
+  border-color: var(--accent-yellow);
+}
+
+.copilot-send-btn {
+  background: var(--primary-red);
+  color: #ffffff;
+  border: none;
+  border-radius: 10px;
+  padding: 0 1.1rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.copilot-send-btn:hover {
+  background: #d32f2f;
 }
 
 /* Printable Report Page */

@@ -1,5 +1,5 @@
 /**
- * AI Disaster Response Coordinator - Universal EOC Engine with AI Decision Intelligence
+ * AI Disaster Response Coordinator - Universal EOC Engine with AI Copilot
  */
 
 let mapInstance = null;
@@ -19,15 +19,17 @@ function initEventListeners() {
     const exportJsonBtn = document.getElementById('exportJsonBtn');
     const voiceAdvisoryBtn = document.getElementById('voiceAdvisoryBtn');
 
-    if (searchBtn) {
-        searchBtn.addEventListener('click', performAnalysis);
-    }
+    // Copilot Listeners
+    const copilotToggleBtn = document.getElementById('copilotToggleBtn');
+    const copilotCloseBtn = document.getElementById('copilotCloseBtn');
+    const copilotSendBtn = document.getElementById('copilotSendBtn');
+    const copilotInput = document.getElementById('copilotInput');
+    const copilotChips = document.querySelectorAll('.copilot-chip');
 
+    if (searchBtn) searchBtn.addEventListener('click', performAnalysis);
     if (queryInput) {
         queryInput.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') {
-                performAnalysis();
-            }
+            if (e.key === 'Enter') performAnalysis();
         });
     }
 
@@ -41,17 +43,44 @@ function initEventListeners() {
         });
     });
 
-    if (generateReportBtn) {
-        generateReportBtn.addEventListener('click', navigateToReport);
+    if (generateReportBtn) generateReportBtn.addEventListener('click', navigateToReport);
+    if (exportJsonBtn) exportJsonBtn.addEventListener('click', exportRawJson);
+    if (voiceAdvisoryBtn) voiceAdvisoryBtn.addEventListener('click', toggleVoiceAdvisory);
+
+    // AI Copilot Interactions
+    if (copilotToggleBtn) {
+        copilotToggleBtn.addEventListener('click', () => {
+            const panel = document.getElementById('copilotPanel');
+            if (panel) {
+                const isHidden = panel.style.display === 'none' || !panel.style.display;
+                panel.style.display = isHidden ? 'flex' : 'none';
+            }
+        });
     }
 
-    if (exportJsonBtn) {
-        exportJsonBtn.addEventListener('click', exportRawJson);
+    if (copilotCloseBtn) {
+        copilotCloseBtn.addEventListener('click', () => {
+            const panel = document.getElementById('copilotPanel');
+            if (panel) panel.style.display = 'none';
+        });
     }
 
-    if (voiceAdvisoryBtn) {
-        voiceAdvisoryBtn.addEventListener('click', toggleVoiceAdvisory);
+    if (copilotSendBtn) {
+        copilotSendBtn.addEventListener('click', () => sendCopilotMessage());
     }
+
+    if (copilotInput) {
+        copilotInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') sendCopilotMessage();
+        });
+    }
+
+    copilotChips.forEach(chip => {
+        chip.addEventListener('click', () => {
+            const question = chip.getAttribute('data-question');
+            if (question) sendCopilotMessage(question);
+        });
+    });
 }
 
 async function performAnalysis() {
@@ -102,7 +131,7 @@ async function performAnalysis() {
 }
 
 /**
- * ADDITION 2: Animated Live AI Agent Execution Workflow (5 Sequential Steps)
+ * Animated Live AI Agent Execution Workflow (5 Sequential Steps)
  */
 async function runLoadingProgress() {
     const steps = [
@@ -141,16 +170,16 @@ async function runLoadingProgress() {
 }
 
 /**
- * Renders complete EOC Telemetry Dashboard with AI Decision Capabilities
+ * Renders complete EOC Telemetry Dashboard
  */
 function renderDashboard(data) {
     const dashboardResults = document.getElementById('dashboardResults');
     if (!dashboardResults) return;
 
-    // STEP A: UNHIDE DASHBOARD FIRST BEFORE LEAFLET INIT
+    // STEP A: UNHIDE DASHBOARD FIRST
     dashboardResults.style.display = 'block';
 
-    // 1. Basic Information
+    // 1. Basic Info
     document.getElementById('disasterType').textContent = data.disaster_type || 'Emergency Incident';
     document.getElementById('disasterSummary').textContent = data.summary || 'Summary unavailable.';
 
@@ -176,14 +205,14 @@ function renderDashboard(data) {
     document.getElementById('metricRisk').textContent = data.risk_index || '9.2 / 10';
     document.getElementById('metricTeams').textContent = (data.recommended_resources || []).length + ' Key Squads';
 
-    // 4. ADDITION 5: Executive Command Brief
+    // 4. Executive Command Brief
     const brief = data.executive_command_brief || {};
     document.getElementById('briefSummary').textContent = brief.summary || data.summary;
     document.getElementById('briefPriorities').textContent = brief.priorities || '1. Life evacuation. 2. Medical deployment. 3. Power grid safety.';
     document.getElementById('briefActions').textContent = brief.actions || 'Mobilize rescue squads, open emergency relief camps.';
     document.getElementById('briefAdvisory').textContent = brief.advisory || 'Instruct public in flood zones to move to upper floors or shelters.';
 
-    // 5. ADDITION 1: AI Decision Intelligence Panel
+    // 5. AI Decision Intelligence Panel
     const decision = data.ai_decision_intelligence || {};
     const conf = decision.confidence_score || '95%';
     document.getElementById('aiConfidenceScore').textContent = conf;
@@ -211,9 +240,9 @@ function renderDashboard(data) {
         evidenceBox.appendChild(d);
     });
 
-    document.getElementById('aiVerificationStatus').textContent = decision.verification_status || 'Multi-Agent Stream Verified';
+    document.getElementById('aiVerificationStatus').textContent = decision.verification_status || 'Multi-Source Verified';
 
-    // 6. ADDITION 3: Predictive Risk Assessment Card
+    // 6. Predictive Intelligence Card
     const pred = data.predictive_intelligence || {};
     const esc = pred.escalation_risk || { value: '78%', trend: 'up' };
     const hosp = pred.hospital_load || { value: '85%', trend: 'up' };
@@ -299,7 +328,7 @@ function renderDashboard(data) {
         contactList.appendChild(item);
     });
 
-    // 11. ADDITION 4: Recommended Rescue Resources WITH REASONING
+    // 11. Recommended Rescue Resources WITH REASONING
     const resourcesList = document.getElementById('resourcesList');
     resourcesList.innerHTML = '';
     const resourceReasoning = data.resource_reasoning || [];
@@ -353,7 +382,7 @@ function renderDashboard(data) {
         timelineList.appendChild(item);
     });
 
-    // 14. ADDITION 6: Source Verification Panel
+    // 14. Source Verification Panel
     const ver = data.source_verification || {};
     document.getElementById('verifyGov').textContent = ver.government_advisories || 'Government Bulletins: Verified';
     document.getElementById('verifyWeather').textContent = ver.weather_reports || 'Weather Radar: Active';
@@ -381,7 +410,100 @@ function renderDashboard(data) {
 }
 
 /**
- * Leaflet Map Initialization with invalidateSize()
+ * AI COPILOT CHAT FUNCTIONALITY
+ */
+async function sendCopilotMessage(customQuestion = null) {
+    const input = document.getElementById('copilotInput');
+    const msgContainer = document.getElementById('copilotMessages');
+    
+    const questionText = customQuestion || (input ? input.value.trim() : '');
+    if (!questionText) return;
+
+    if (input) input.value = '';
+
+    const timestamp = getFormattedTimestamp();
+
+    // 1. Render User Message Bubble
+    const userMsgDiv = document.createElement('div');
+    userMsgDiv.className = 'copilot-msg msg-user';
+    userMsgDiv.innerHTML = `
+        <div>${escapeHtml(questionText)}</div>
+        <div class="copilot-msg-meta text-end">[${timestamp}] YOU</div>
+    `;
+    msgContainer.appendChild(userMsgDiv);
+    msgContainer.scrollTop = msgContainer.scrollHeight;
+
+    // 2. Render Typing Indicator Bubble
+    const typingDiv = document.createElement('div');
+    typingDiv.className = 'copilot-msg msg-ai';
+    typingDiv.id = 'copilotTyping';
+    typingDiv.innerHTML = `
+        <div><i class="bi bi-three-dots spin text-warning me-1"></i> Analyzing telemetry...</div>
+    `;
+    msgContainer.appendChild(typingDiv);
+    msgContainer.scrollTop = msgContainer.scrollHeight;
+
+    try {
+        const response = await fetch('/api/copilot/chat', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                message: questionText,
+                context: currentAnalysisData || {}
+            })
+        });
+
+        const data = await response.json();
+        const aiAnswer = data.answer || "Current data does not contain this information.";
+
+        // Remove typing indicator
+        const typingEl = document.getElementById('copilotTyping');
+        if (typingEl) typingEl.remove();
+
+        // 3. Render AI Response Bubble
+        const aiMsgDiv = document.createElement('div');
+        aiMsgDiv.className = 'copilot-msg msg-ai';
+        aiMsgDiv.innerHTML = `
+            <div>${escapeHtml(aiAnswer).replace(/\n/g, '<br/>')}</div>
+            <div class="copilot-msg-meta">[${timestamp}] AI EOC COPILOT</div>
+        `;
+        msgContainer.appendChild(aiMsgDiv);
+
+    } catch (err) {
+        console.error('Copilot request error:', err);
+        const typingEl = document.getElementById('copilotTyping');
+        if (typingEl) typingEl.remove();
+
+        const errorDiv = document.createElement('div');
+        errorDiv.className = 'copilot-msg msg-ai';
+        errorDiv.innerHTML = `
+            <div>Current data does not contain this information.</div>
+            <div class="copilot-msg-meta">[${timestamp}] AI EOC COPILOT</div>
+        `;
+        msgContainer.appendChild(errorDiv);
+    }
+
+    msgContainer.scrollTop = msgContainer.scrollHeight;
+}
+
+function getFormattedTimestamp() {
+    const d = new Date();
+    const hrs = String(d.getHours()).padStart(2, '0');
+    const mins = String(d.getMinutes()).padStart(2, '0');
+    return `${hrs}:${mins} HRS`;
+}
+
+function escapeHtml(text) {
+    return String(text)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+}
+
+/**
+ * Leaflet Map Initialization
  */
 function initLeafletMap(locations, defaultSeverity) {
     const mapDiv = document.getElementById('mapContainer');
