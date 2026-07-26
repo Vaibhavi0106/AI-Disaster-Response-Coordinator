@@ -175,7 +175,7 @@
             <!-- Main Telemetry Grid -->
             <div class="row g-4 mb-4">
                 
-                <!-- Left Column: Briefing, AI Decision Intelligence Panel, Map, Sectors & Shelters -->
+                <!-- Left Column: Briefing, AI Decision Intelligence, AI Consensus Engine, Map, Sectors & Shelters -->
                 <div class="col-lg-7">
                     
                     <!-- Disaster Briefing Card -->
@@ -232,6 +232,47 @@
 
                             <div class="d-flex justify-content-between align-items-center pt-2 border-top border-secondary fs-7 font-mono">
                                 <span class="text-white"><i class="bi bi-check-circle-fill text-success me-1"></i> Status: <strong id="aiVerificationStatus" class="text-cyan">Multi-Source Verified</strong></span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Collapsible AI Consensus Engine Panel -->
+                    <div class="glass-panel p-4 mb-4 border-start border-4 border-warning">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <h5 class="text-warning fw-bold mb-0 d-flex align-items-center gap-2">
+                                <i class="bi bi-people-fill text-warning"></i> AI Consensus Engine (5 Specialized Agents)
+                            </h5>
+                            <button class="btn btn-sm btn-outline-warning font-mono text-warning fw-bold" type="button" data-bs-toggle="collapse" data-bs-target="#consensusPanel">
+                                <i class="bi bi-chevron-down me-1"></i> Toggle Consensus
+                            </button>
+                        </div>
+
+                        <div class="collapse show mt-3" id="consensusPanel">
+                            <!-- 5 Specialized Agent Cards Grid -->
+                            <div id="consensusAgentsGrid" class="row g-2 mb-3">
+                                <!-- Populated dynamically via JS with sequential animation -->
+                            </div>
+
+                            <!-- Consensus Summary & Metrics Box -->
+                            <div class="p-3 bg-dark rounded border border-warning font-mono fs-7">
+                                <div class="row g-2 text-center mb-2">
+                                    <div class="col-md-4">
+                                        <small class="text-warning d-block fw-bold fs-8">OVERALL CONSENSUS CONFIDENCE</small>
+                                        <strong id="consensusOverallConfidence" class="text-cyan fs-6">95%</strong>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <small class="text-warning d-block fw-bold fs-8">AGREEMENT SCORE</small>
+                                        <strong id="consensusAgreementScore" class="text-success fs-6">5/5 Full Consensus (100%)</strong>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <small class="text-warning d-block fw-bold fs-8">FINAL OPERATIONAL PRIORITY</small>
+                                        <strong id="consensusFinalPriority" class="text-danger fs-6">P1 - Immediate Intervention Dispatch</strong>
+                                    </div>
+                                </div>
+                                <div class="pt-2 border-top border-secondary text-center text-white">
+                                    <strong class="text-warning me-1">FINAL CONSENSUS SUMMARY:</strong>
+                                    <span id="consensusFinalSummary">Loading consensus summary...</span>
+                                </div>
                             </div>
                         </div>
                     </div>
