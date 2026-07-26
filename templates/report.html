@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Official Incident Briefing Report | AI Disaster Response</title>
+    
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap Icons -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
+    <!-- Custom Glassmorphic EOC Design CSS -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+
+    <!-- Navigation Bar -->
+    <nav class="navbar navbar-expand-lg navbar-eoc no-print">
+        <div class="container-fluid px-4">
+            <a class="navbar-brand d-flex align-items-center gap-3" href="/">
+                <i class="bi bi-arrow-left-circle text-info fs-3"></i>
+                <span class="brand-badge fs-5">BACK TO EOC DASHBOARD</span>
+            </a>
+            <div class="d-flex align-items-center gap-2">
+                <button id="downloadPdfBtn" class="btn btn-outline-info font-mono fw-bold me-2">
+                    <i class="bi bi-file-earmark-pdf-fill me-1"></i> Download PDF
+                </button>
+                <button onclick="window.print()" class="btn btn-info font-mono fw-bold text-dark">
+                    <i class="bi bi-printer-fill me-1"></i> Print Report
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Printable Report Container -->
+    <div class="container py-4">
+        <div class="report-paper shadow-lg">
+            
+            <!-- Header Banner -->
+            <div class="report-header-banner d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3">
+                <div>
+                    <span class="badge bg-danger bg-opacity-25 text-danger border border-danger mb-2 font-mono">OFFICIAL EOC COMMAND BRIEFING</span>
+                    <h2 id="reportTitle" class="text-white fw-bold mb-1">INCIDENT BRIEFING REPORT</h2>
+                    <p id="reportDateTime" class="text-info font-mono fs-7 mb-0">Date & Time: Processing...</p>
+                </div>
+                <div class="text-md-end">
+                    <div id="reportSeverity" class="badge-severity badge-critical mb-1">CRITICAL</div>
+                    <div id="reportPriority" class="badge-priority">P1 - Priority Dispatch</div>
+                </div>
+            </div>
+
+            <!-- Operational Telemetry Bar -->
+            <div class="row g-3 mb-4 font-mono">
+                <div class="col-md-4">
+                    <div class="p-3 bg-dark bg-opacity-60 border border-secondary border-opacity-25 rounded-3">
+                        <small class="text-muted d-block">IMPACT RADIUS</small>
+                        <strong id="reportRadius" class="text-white fs-6">-</strong>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="p-3 bg-dark bg-opacity-60 border border-secondary border-opacity-25 rounded-3">
+                        <small class="text-muted d-block">RISK LEVEL INDEX</small>
+                        <strong id="reportRisk" class="text-danger fs-6">-</strong>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="p-3 bg-dark bg-opacity-60 border border-secondary border-opacity-25 rounded-3">
+                        <small class="text-muted d-block">WEATHER METRICS</small>
+                        <strong id="reportWeather" class="text-info fs-6">-</strong>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 1. Executive Summary -->
+            <div class="mb-4">
+                <h5 class="text-info fw-bold border-bottom border-secondary border-opacity-25 pb-2 mb-3">
+                    <i class="bi bi-file-earmark-text-fill me-2"></i> 1. Executive Briefing & Summary
+                </h5>
+                <p id="reportSummary" class="text-light leading-relaxed fs-6">
+                    Loading briefing context...
+                </p>
+            </div>
+
+            <!-- 2. Affected Areas -->
+            <div class="mb-4">
+                <h5 class="text-info fw-bold border-bottom border-secondary border-opacity-25 pb-2 mb-3">
+                    <i class="bi bi-geo-alt-fill me-2"></i> 2. Affected Locations & Impact Sectors
+                </h5>
+                <div id="reportAffectedAreas" class="row g-2">
+                    <!-- Populated dynamically -->
+                </div>
+            </div>
+
+            <!-- 3. Recommended Rescue Actions -->
+            <div class="mb-4">
+                <h5 class="text-info fw-bold border-bottom border-secondary border-opacity-25 pb-2 mb-3">
+                    <i class="bi bi-life-preserver me-2"></i> 3. Recommended Rescue Actions & Resource Allocation
+                </h5>
+                <div id="reportRescueActions">
+                    <!-- Populated dynamically -->
+                </div>
+            </div>
+
+            <!-- 4. Tactical Evacuation Shelters -->
+            <div class="mb-4">
+                <h5 class="text-info fw-bold border-bottom border-secondary border-opacity-25 pb-2 mb-3">
+                    <i class="bi bi-house-heart-fill me-2"></i> 4. Tactical Evacuation Shelters & Relief Camps
+                </h5>
+                <div id="reportShelters">
+                    <!-- Populated dynamically -->
+                </div>
+            </div>
+
+            <!-- 5. Public Safety Advisory -->
+            <div class="mb-4">
+                <h5 class="text-info fw-bold border-bottom border-secondary border-opacity-25 pb-2 mb-3">
+                    <i class="bi bi-shield-check me-2"></i> 5. Public Safety Advisory & Directives
+                </h5>
+                <div id="reportPublicAdvisory">
+                    <!-- Populated dynamically -->
+                </div>
+            </div>
+
+            <!-- 6. Sources & Verification -->
+            <div class="mb-4">
+                <h5 class="text-info fw-bold border-bottom border-secondary border-opacity-25 pb-2 mb-3">
+                    <i class="bi bi-link-45deg me-2"></i> 6. Verified Intelligence Stream Sources
+                </h5>
+                <ul id="reportSources" class="font-mono fs-7 text-muted">
+                    <!-- Populated dynamically -->
+                </ul>
+            </div>
+
+            <!-- Sign-off Footer -->
+            <div class="mt-5 pt-4 border-top border-secondary border-opacity-25 text-center font-mono fs-7 text-muted">
+                <p class="mb-1">AI DISASTER RESPONSE COORDINATOR | EOC COMMAND BRIEFING</p>
+                <p class="mb-0">CONFIDENTIAL EMERGENCY BRIEFING - FOR OFFICIAL RESCUE DISPATCH</p>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const rawData = sessionStorage.getItem('currentDisasterReport');
+            if (!rawData) {
+                alert('No report data found. Redirecting to EOC Dashboard.');
+                window.location.href = '/';
+                return;
+            }
+
+            const data = JSON.parse(rawData);
+            
+            document.getElementById('reportTitle').textContent = `INCIDENT REPORT: ${(data.disaster_type || 'DISASTER').toUpperCase()}`;
+            document.getElementById('reportDateTime').textContent = `Date & Time: ${new Date().toLocaleString()}`;
+            
+            const sevBadge = document.getElementById('reportSeverity');
+            sevBadge.textContent = data.severity || 'HIGH';
+            sevBadge.className = 'badge-severity ' + (
+                (data.severity || '').toUpperCase().includes('CRIT') ? 'badge-critical' :
+                (data.severity || '').toUpperCase().includes('HIGH') ? 'badge-high' :
+                (data.severity || '').toUpperCase().includes('MED') ? 'badge-medium' : 'badge-low'
+            );
+
+            document.getElementById('reportPriority').textContent = data.priority || 'P1 - High Priority';
+            document.getElementById('reportSummary').textContent = data.summary || 'N/A';
+            document.getElementById('reportRadius').textContent = data.impact_radius || '15-30 km';
+            document.getElementById('reportRisk').textContent = data.risk_index || '8.8 / 10';
+            
+            const w = data.weather_metrics || {};
+            document.getElementById('reportWeather').textContent = `${w.temp || '27°C'} | ${w.precipitation || 'Heavy Rain'}`;
+
+            // Locations
+            const locContainer = document.getElementById('reportAffectedAreas');
+            locContainer.innerHTML = '';
+            (data.affected_locations || []).forEach(loc => {
+                const col = document.createElement('div');
+                col.className = 'col-md-6';
+                const name = typeof loc === 'string' ? loc : loc.name;
+                const details = typeof loc === 'object' ? loc.details : 'Impact sector under assessment';
+                col.innerHTML = `
+                    <div class="p-3 bg-dark bg-opacity-25 border border-secondary border-opacity-25 rounded-3">
+                        <strong class="text-info d-block"><i class="bi bi-pin-map-fill"></i> ${name}</strong>
+                        <small class="text-muted">${details}</small>
+                    </div>
+                `;
+                locContainer.appendChild(col);
+            });
+
+            // Rescue Actions
+            const rescueContainer = document.getElementById('reportRescueActions');
+            rescueContainer.innerHTML = '';
+            (data.recommended_resources || []).forEach(res => {
+                const item = document.createElement('div');
+                item.className = 'list-custom-item';
+                item.innerHTML = `<i class="bi bi-check2-square text-success"></i> <span class="text-light">${res}</span>`;
+                rescueContainer.appendChild(item);
+            });
+
+            // Shelters
+            const shelterContainer = document.getElementById('reportShelters');
+            shelterContainer.innerHTML = '';
+            (data.evacuation_shelters || []).forEach(s => {
+                const item = document.createElement('div');
+                item.className = 'list-custom-item';
+                item.innerHTML = `<i class="bi bi-house-door-fill text-info"></i> <span class="text-light">${s.name} (${s.capacity}) - ${s.status}</span>`;
+                shelterContainer.appendChild(item);
+            });
+
+            // Advisories
+            const advisoryContainer = document.getElementById('reportPublicAdvisory');
+            advisoryContainer.innerHTML = '';
+            (data.safety_measures || []).forEach(me => {
+                const item = document.createElement('div');
+                item.className = 'list-custom-item';
+                item.innerHTML = `<i class="bi bi-exclamation-triangle-fill text-warning"></i> <span class="text-light">${me}</span>`;
+                advisoryContainer.appendChild(item);
+            });
+
+            // Sources
+            const sourcesContainer = document.getElementById('reportSources');
+            sourcesContainer.innerHTML = '';
+            (data.sources || []).forEach(src => {
+                const li = document.createElement('li');
+                li.innerHTML = `<a href="${src}" target="_blank" class="text-info">${src}</a>`;
+                sourcesContainer.appendChild(li);
+            });
+
+            // PDF Download Button handler
+            document.getElementById('downloadPdfBtn').addEventListener('click', async () => {
+                try {
+                    const btn = document.getElementById('downloadPdfBtn');
+                    btn.disabled = true;
+                    btn.innerHTML = '<i class="bi bi-hourglass-split me-1"></i> Generating PDF...';
+
+                    const response = await fetch('/api/report/pdf', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(data)
+                    });
+
+                    if (response.ok) {
+                        const blob = await response.blob();
+                        const downloadUrl = window.URL.createObjectURL(blob);
+                        const a = document.createElement('a');
+                        a.href = downloadUrl;
+                        a.download = `Incident_Report_${(data.disaster_type || 'Disaster').replace(/\s+/g, '_')}.pdf`;
+                        document.body.appendChild(a);
+                        a.click();
+                        a.remove();
+                    } else {
+                        alert('PDF generation failed on server. Opening print view.');
+                        window.print();
+                    }
+                } catch (e) {
+                    console.error('PDF error:', e);
+                    window.print();
+                } finally {
+                    const btn = document.getElementById('downloadPdfBtn');
+                    btn.disabled = false;
+                    btn.innerHTML = '<i class="bi bi-file-earmark-pdf-fill me-1"></i> Download PDF';
+                }
+            });
+        });
+    </script>
+</body>
+</html>

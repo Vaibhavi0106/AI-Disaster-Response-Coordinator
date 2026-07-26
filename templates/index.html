@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Disaster Response Coordinator | EOC Command Center</title>
+    
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap Icons -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
+    <!-- Leaflet Map CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <!-- Custom High-Contrast EOC CSS -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+
+    <!-- Navigation Bar -->
+    <nav class="navbar navbar-expand-lg navbar-eoc sticky-top">
+        <div class="container-fluid px-4">
+            <a class="navbar-brand d-flex align-items-center gap-3" href="/">
+                <i class="bi bi-shield-radar text-warning fs-2"></i>
+                <div>
+                    <span class="brand-badge">AI DISASTER RESPONSE</span>
+                    <div class="text-uppercase font-mono text-warning fs-7 fw-bold">Emergency Operations Command Center</div>
+                </div>
+            </a>
+            
+            <div class="d-flex align-items-center gap-3 ms-auto">
+                <div class="d-none d-md-flex align-items-center gap-2 px-3 py-1 rounded-pill bg-dark border border-warning font-mono fs-7">
+                    <span class="pulse-radar"></span>
+                    <span class="text-warning fw-bold">EOC LIVE TELEMETRY: ACTIVE</span>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Container -->
+    <div class="container-fluid px-4 py-4">
+        
+        <!-- Hero Section -->
+        <section class="hero-section">
+            <div class="badge px-3 py-2 rounded-pill bg-danger text-white border border-warning mb-3 fw-bold font-mono">
+                <i class="bi bi-cpu-fill me-1"></i> Universal LangChain + Tavily Search Engine
+            </div>
+            <h1 class="hero-title">Real-Time Disaster Response & Universal Dispatch</h1>
+            <p class="hero-subtitle">
+                Enter ANY location or disaster query worldwide to analyze ground truth reports, geocode tactical sector maps, and dispatch AI-recommended rescue assets.
+            </p>
+
+            <!-- Search Bar -->
+            <div class="search-box-container mb-3">
+                <div class="search-input-group glass-panel p-2">
+                    <i class="bi bi-search search-icon-inside"></i>
+                    <input type="text" id="disasterQuery" class="search-input" placeholder="Type ANY query: e.g. Flood in Mumbai, Landslide in Wayanad, Earthquake in Tokyo, Wildfire in Sydney..." autocomplete="off">
+                    <button id="searchBtn" class="btn-analyze ms-2">
+                        <i class="bi bi-lightning-charge-fill me-1"></i> Analyze Crisis
+                    </button>
+                </div>
+            </div>
+
+            <!-- Global Quick Pills -->
+            <div class="d-flex justify-content-center flex-wrap align-items-center gap-2 mb-4">
+                <small class="text-warning fw-bold font-mono me-2 fs-6">Global Examples:</small>
+                <span class="sample-pill" data-query="Flood in Mumbai"><i class="bi bi-water text-cyan"></i> Flood in Mumbai</span>
+                <span class="sample-pill" data-query="Landslide in Wayanad"><i class="bi bi-mountains text-warning"></i> Landslide in Wayanad</span>
+                <span class="sample-pill" data-query="Earthquake in Tokyo"><i class="bi bi-activity text-danger"></i> Earthquake in Tokyo</span>
+                <span class="sample-pill" data-query="Cyclone in Miami"><i class="bi bi-tornado text-info"></i> Cyclone in Miami</span>
+                <span class="sample-pill" data-query="Wildfire in Sydney"><i class="bi bi-fire text-warning"></i> Wildfire in Sydney</span>
+            </div>
+        </section>
+
+        <!-- ADDITION 2: Live AI Agent Execution Stepper Box -->
+        <div id="loadingBox" class="loading-box glass-panel">
+            <div class="spinner-radar"></div>
+            <h4 class="text-white fw-bold mb-2">Live AI Agent Execution Workflow</h4>
+            <p class="text-warning font-mono fs-7 mb-3">Sequential Multi-Agent Task Orchestration</p>
+            <div class="d-flex flex-column align-items-center">
+                <div id="step-search" class="step-item"><i class="bi bi-dash-circle"></i> Search Agent (Tavily API)</div>
+                <div id="step-analyze" class="step-item"><i class="bi bi-dash-circle"></i> Incident Analysis Agent</div>
+                <div id="step-classify" class="step-item"><i class="bi bi-dash-circle"></i> Severity Classification Agent</div>
+                <div id="step-recommend" class="step-item"><i class="bi bi-dash-circle"></i> Resource Recommendation Agent</div>
+                <div id="step-report" class="step-item"><i class="bi bi-dash-circle"></i> Incident Report Agent</div>
+            </div>
+        </div>
+
+        <!-- Dashboard Results Section -->
+        <div id="dashboardResults">
+            
+            <!-- EOC Top Action Banner -->
+            <div class="glass-panel p-4 mb-4 d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 border-start border-4 border-danger">
+                <div>
+                    <div class="d-flex align-items-center flex-wrap gap-3 mb-2">
+                        <h2 id="disasterType" class="mb-0 text-white fw-bold">Emergency Incident</h2>
+                        <span id="severityBadge" class="badge-severity badge-critical">Critical</span>
+                        <span id="priorityBadge" class="badge-priority">P1 - High Priority</span>
+                    </div>
+                    <p class="text-warning mb-0 font-mono fs-7 fw-bold"><i class="bi bi-shield-check me-1"></i> Live Emergency Command Briefing | Operational Dispatch Active</p>
+                </div>
+                <div class="d-flex align-items-center gap-2">
+                    <button id="exportJsonBtn" class="btn btn-outline-warning font-mono fw-bold text-white">
+                        <i class="bi bi-download me-1"></i> Export JSON
+                    </button>
+                    <button id="generateReportBtn" class="btn-generate-report">
+                        <i class="bi bi-file-earmark-text-fill me-2"></i> Generate Incident Report
+                    </button>
+                </div>
+            </div>
+
+            <!-- Key Metrics Bar (4 Stat Cards) -->
+            <div class="row g-3 mb-4">
+                <div class="col-md-3 col-6">
+                    <div class="metric-box">
+                        <div class="metric-label"><i class="bi bi-radar me-1"></i> Impact Radius</div>
+                        <div id="metricRadius" class="metric-value font-mono">20 - 35 km</div>
+                    </div>
+                </div>
+                <div class="col-md-3 col-6">
+                    <div class="metric-box">
+                        <div class="metric-label"><i class="bi bi-exclamation-triangle me-1"></i> Risk Level Index</div>
+                        <div id="metricRisk" class="metric-value font-mono text-danger">9.2 / 10</div>
+                    </div>
+                </div>
+                <div class="col-md-3 col-6">
+                    <div class="metric-box">
+                        <div class="metric-label"><i class="bi bi-box-seam me-1"></i> Required Rescue Assets</div>
+                        <div id="metricTeams" class="metric-value font-mono text-warning">5 Key Squads</div>
+                    </div>
+                </div>
+                <div class="col-md-3 col-6">
+                    <div class="metric-box">
+                        <div class="metric-label"><i class="bi bi-cloud-hail me-1"></i> Weather Warning</div>
+                        <div id="weatherStatus" class="metric-value text-cyan fs-6 font-mono mt-1">Severe Alert</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ADDITION 5: 30-Second Executive Command Brief Panel -->
+            <div class="glass-panel p-4 mb-4 border-start border-4 border-warning">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h5 class="text-warning fw-bold mb-0 d-flex align-items-center gap-2">
+                        <i class="bi bi-briefcase-fill text-warning"></i> 30-Second Executive Command Brief
+                    </h5>
+                    <span class="badge bg-warning text-dark font-mono fw-bold fs-7">For Emergency Officials</span>
+                </div>
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <div class="p-3 bg-dark rounded border border-secondary">
+                            <strong class="text-warning font-mono d-block mb-1">SITUATION SUMMARY</strong>
+                            <p id="briefSummary" class="text-white mb-0 fs-7 fw-semibold">Loading briefing...</p>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="p-3 bg-dark rounded border border-secondary">
+                            <strong class="text-danger font-mono d-block mb-1">IMMEDIATE PRIORITIES</strong>
+                            <p id="briefPriorities" class="text-white mb-0 fs-7 fw-semibold">Loading priorities...</p>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="p-3 bg-dark rounded border border-secondary">
+                            <strong class="text-cyan font-mono d-block mb-1">RECOMMENDED ACTIONS</strong>
+                            <p id="briefActions" class="text-white mb-0 fs-7 fw-semibold">Loading actions...</p>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="p-3 bg-dark rounded border border-secondary">
+                            <strong class="text-success font-mono d-block mb-1">PUBLIC ADVISORY</strong>
+                            <p id="briefAdvisory" class="text-white mb-0 fs-7 fw-semibold">Loading advisory...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Main Telemetry Grid -->
+            <div class="row g-4 mb-4">
+                
+                <!-- Left Column: Briefing, AI Decision Intelligence Panel, Map, Sectors & Shelters -->
+                <div class="col-lg-7">
+                    
+                    <!-- Disaster Briefing Card -->
+                    <div class="glass-panel p-4 mb-4">
+                        <h5 class="text-warning fw-bold mb-3 d-flex align-items-center gap-2">
+                            <i class="bi bi-card-text"></i> Tactical Situation Briefing
+                        </h5>
+                        <p id="disasterSummary" class="text-white lead fs-6 leading-relaxed mb-0 fw-semibold">
+                            Analyzing situation data...
+                        </p>
+                    </div>
+
+                    <!-- ADDITION 1: Collapsible AI Decision Intelligence Panel -->
+                    <div class="glass-panel p-4 mb-4 border-start border-4 border-cyan">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <h5 class="text-cyan fw-bold mb-0 d-flex align-items-center gap-2">
+                                <i class="bi bi-cpu-fill text-cyan"></i> AI Decision Intelligence & Severity Reasoning
+                            </h5>
+                            <button class="btn btn-sm btn-outline-cyan font-mono text-cyan fw-bold" type="button" data-bs-toggle="collapse" data-bs-target="#decisionPanel">
+                                <i class="bi bi-chevron-down me-1"></i> Explain AI Decision
+                            </button>
+                        </div>
+
+                        <div class="collapse show mt-3" id="decisionPanel">
+                            <!-- AI Confidence Meter -->
+                            <div class="mb-3 p-3 bg-dark rounded border border-cyan">
+                                <div class="d-flex justify-content-between align-items-center mb-1">
+                                    <strong class="text-white font-mono fs-7">AI SEVERITY CLASSIFICATION CONFIDENCE</strong>
+                                    <span id="aiConfidenceScore" class="font-mono text-cyan fw-bold fs-6">95%</span>
+                                </div>
+                                <div class="progress bg-secondary" style="height: 8px;">
+                                    <div id="aiConfidenceBar" class="progress-bar bg-cyan" role="progressbar" style="width: 95%;"></div>
+                                </div>
+                            </div>
+
+                            <!-- Severity Reasoning -->
+                            <div class="mb-3">
+                                <strong class="text-warning font-mono d-block mb-1 fs-7">WHY WAS THIS SEVERITY ASSIGNED?</strong>
+                                <p id="aiSeverityReasoning" class="text-white fs-7 mb-0 fw-semibold">Analyzing classification factors...</p>
+                            </div>
+
+                            <!-- Risk Factors Grid -->
+                            <div class="row g-2 mb-3">
+                                <div class="col-md-6">
+                                    <strong class="text-danger font-mono d-block mb-1 fs-7">IDENTIFIED RISK FACTORS</strong>
+                                    <div id="aiRiskFactors" class="p-2 bg-dark rounded border border-danger font-mono fs-7 text-white">
+                                        <!-- Populated via JS -->
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <strong class="text-success font-mono d-block mb-1 fs-7">SUPPORTING EVIDENCE</strong>
+                                    <div id="aiEvidence" class="p-2 bg-dark rounded border border-success font-mono fs-7 text-white">
+                                        <!-- Populated via JS -->
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Reasoning Summary & Verification -->
+                            <div class="d-flex justify-content-between align-items-center pt-2 border-top border-secondary fs-7 font-mono">
+                                <span class="text-white"><i class="bi bi-check-circle-fill text-success me-1"></i> Status: <strong id="aiVerificationStatus" class="text-cyan">Multi-Source Verified</strong></span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Leaflet Tactical Map (With Map Wrapper) -->
+                    <div class="glass-panel p-4 mb-4">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <h5 class="text-warning fw-bold mb-0 d-flex align-items-center gap-2">
+                                <i class="bi bi-geo-alt-fill text-danger"></i> Tactical Impact Map
+                            </h5>
+                            <small class="text-white font-mono fw-bold"><i class="bi bi-map-fill text-cyan me-1"></i> Leaflet.js / CartoDB Dark</small>
+                        </div>
+                        <div class="map-wrapper">
+                            <div id="mapContainer"></div>
+                        </div>
+                    </div>
+
+                    <!-- Affected Locations Selector (Click to Center Map) -->
+                    <div class="glass-panel p-4 mb-4">
+                        <h5 class="text-warning fw-bold mb-2 d-flex align-items-center justify-content-between">
+                            <span><i class="bi bi-pin-map-fill text-danger me-2"></i> Impacted Operational Sectors</span>
+                            <small class="text-white font-mono fs-7 fw-bold">Click sector to fly map</small>
+                        </h5>
+                        <div id="locationsList">
+                            <!-- Populated dynamically via JS -->
+                        </div>
+                    </div>
+
+                    <!-- Evacuation Shelters Card -->
+                    <div class="glass-panel p-4">
+                        <h5 class="text-warning fw-bold mb-3 d-flex align-items-center gap-2">
+                            <i class="bi bi-house-heart-fill text-success"></i> Tactical Evacuation Shelters & Relief Camps
+                        </h5>
+                        <div id="shelterList">
+                            <!-- Populated dynamically via JS -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Right Column: Predictive Card, Weather, Hotlines, Resources with Reasoning, Advisories & Verification -->
+                <div class="col-lg-5">
+                    
+                    <!-- ADDITION 3: Predictive Risk Assessment Card -->
+                    <div class="glass-panel p-4 mb-4 border-start border-4 border-warning">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <h5 class="text-warning fw-bold mb-0 d-flex align-items-center gap-2">
+                                <i class="bi bi-graph-up-arrow text-warning"></i> Predictive Intelligence
+                            </h5>
+                            <small class="text-white font-mono fs-7 fw-bold">AI Trend Forecast</small>
+                        </div>
+                        <div class="row g-2 font-mono">
+                            <div class="col-6">
+                                <div class="p-2 bg-dark rounded border border-danger">
+                                    <small class="text-danger d-block fw-bold fs-8">ESCALATION RISK</small>
+                                    <strong id="predEscalation" class="text-white fs-6">78% <i class="bi bi-arrow-up-right-circle-fill text-danger"></i></strong>
+                                </div>
+                            </div>
+                            <div class="col-6">
+                                <div class="p-2 bg-dark rounded border border-danger">
+                                    <small class="text-danger d-block fw-bold fs-8">HOSPITAL LOAD</small>
+                                    <strong id="predHospital" class="text-white fs-6">85% <i class="bi bi-arrow-up-right-circle-fill text-danger"></i></strong>
+                                </div>
+                            </div>
+                            <div class="col-6 mt-2">
+                                <div class="p-2 bg-dark rounded border border-warning">
+                                    <small class="text-warning d-block fw-bold fs-8">ROAD ACCESS</small>
+                                    <strong id="predRoads" class="text-white fs-6">35% <i class="bi bi-arrow-down-right-circle-fill text-warning"></i></strong>
+                                </div>
+                            </div>
+                            <div class="col-6 mt-2">
+                                <div class="p-2 bg-dark rounded border border-info">
+                                    <small class="text-cyan d-block fw-bold fs-8">RESOURCE DEMAND</small>
+                                    <strong id="predDemand" class="text-white fs-6">92% <i class="bi bi-arrow-up-right-circle-fill text-cyan"></i></strong>
+                                </div>
+                            </div>
+                        </div>
+                        <small class="text-white font-mono fs-8 mt-2 d-block text-center">* Predictive model estimates based on real-time ground telemetry</small>
+                    </div>
+
+                    <!-- Weather & Environmental Telemetry -->
+                    <div class="glass-panel p-4 mb-4">
+                        <h5 class="text-warning fw-bold mb-3 d-flex align-items-center gap-2">
+                            <i class="bi bi-cloud-sun-fill text-info"></i> Environmental Telemetry
+                        </h5>
+                        <div class="row g-2 font-mono fs-7">
+                            <div class="col-6">
+                                <div class="p-2 bg-dark rounded border border-warning">
+                                    <small class="text-warning d-block fw-bold">TEMPERATURE</small>
+                                    <strong id="weatherTemp" class="text-white fs-6">28°C</strong>
+                                </div>
+                            </div>
+                            <div class="col-6">
+                                <div class="p-2 bg-dark rounded border border-warning">
+                                    <small class="text-warning d-block fw-bold">PRECIPITATION</small>
+                                    <strong id="weatherPrecip" class="text-white fs-6">Heavy Rain</strong>
+                                </div>
+                            </div>
+                            <div class="col-12 mt-2">
+                                <div class="p-2 bg-dark rounded border border-warning">
+                                    <small class="text-warning d-block fw-bold">WIND VELOCITY</small>
+                                    <strong id="weatherWind" class="text-white fs-6">38 km/h Gusts</strong>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Emergency Hotlines Direct Dispatch Box -->
+                    <div class="glass-panel p-4 mb-4 border-start border-4 border-danger">
+                        <h5 class="text-danger fw-bold mb-3 d-flex align-items-center gap-2">
+                            <i class="bi bi-telephone-outbound-fill"></i> Emergency Command Hotlines
+                        </h5>
+                        <div id="contactList">
+                            <!-- Populated dynamically via JS -->
+                        </div>
+                    </div>
+
+                    <!-- ADDITION 4: Recommended Rescue Resources with Reasoning -->
+                    <div class="glass-panel p-4 mb-4">
+                        <h5 class="text-warning fw-bold mb-3 d-flex align-items-center gap-2">
+                            <i class="bi bi-box-seam-fill text-info"></i> Recommended Rescue Assets & Reasoning
+                        </h5>
+                        <div id="resourcesList">
+                            <!-- Populated via JS with Reasoning explanations -->
+                        </div>
+                    </div>
+
+                    <!-- Public Safety Advisories & Speech Synthesis Voice Button -->
+                    <div class="glass-panel p-4 mb-4">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <h5 class="text-warning fw-bold mb-0 d-flex align-items-center gap-2">
+                                <i class="bi bi-shield-exclamation text-danger"></i> Public Safety Advisories
+                            </h5>
+                            <button id="voiceAdvisoryBtn" class="btn-audio-speak">
+                                <i class="bi bi-volume-up-fill me-1"></i> Read Advisory Aloud
+                            </button>
+                        </div>
+                        <div id="safetyList">
+                            <!-- Populated via JS -->
+                        </div>
+                    </div>
+
+                    <!-- Incident Timeline -->
+                    <div class="glass-panel p-4 mb-4">
+                        <h5 class="text-warning fw-bold mb-3 d-flex align-items-center gap-2">
+                            <i class="bi bi-clock-history text-info"></i> Incident Operational Timeline
+                        </h5>
+                        <div id="timelineList">
+                            <!-- Populated via JS -->
+                        </div>
+                    </div>
+
+                    <!-- ADDITION 6: Source Verification & Confidence Stream -->
+                    <div class="glass-panel p-4">
+                        <h5 class="text-warning fw-bold mb-3 d-flex align-items-center gap-2">
+                            <i class="bi bi-journal-check text-success"></i> Intelligence Source Verification
+                        </h5>
+                        
+                        <div id="sourceVerificationBox" class="p-3 bg-dark rounded border border-success mb-3 font-mono fs-7">
+                            <div class="mb-1 text-white"><i class="bi bi-check-circle-fill text-success me-1"></i> <strong id="verifyGov">Government Advisories: Verified</strong></div>
+                            <div class="mb-1 text-white"><i class="bi bi-check-circle-fill text-success me-1"></i> <strong id="verifyWeather">Weather Radar: Active</strong></div>
+                            <div class="mb-1 text-white"><i class="bi bi-check-circle-fill text-success me-1"></i> <strong id="verifyNews">News Streams: Verified</strong></div>
+                            <div class="mt-2 pt-2 border-top border-secondary d-flex justify-content-between align-items-center">
+                                <span class="text-warning">OVERALL CONFIDENCE:</span>
+                                <strong id="verifyOverallConfidence" class="text-cyan fs-6">95%</strong>
+                            </div>
+                        </div>
+
+                        <ul id="sourcesList" class="list-unstyled mb-0 font-mono fs-7">
+                            <!-- Populated via JS -->
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+    </div>
+
+    <!-- Footer -->
+    <footer class="mt-5 py-4 border-top border-danger bg-dark text-center">
+        <div class="container">
+            <p class="text-warning mb-1 font-mono fs-7 fw-bold">AI Disaster Response Coordinator &copy; 2026 Emergency Operations Command Center</p>
+            <small class="text-white">Powered by Flask, LangChain, Tavily API, Leaflet.js OpenStreetMap & Web Speech API</small>
+        </div>
+    </footer>
+
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+</body>
+</html>
