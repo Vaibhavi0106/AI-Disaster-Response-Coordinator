@@ -740,6 +740,11 @@
                                 <i class="bi bi-shield-exclamation me-1"></i> Survival by Disaster Type
                             </button>
                         </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link bg-dark text-white border border-secondary" id="tab-bot" data-bs-toggle="tab" data-bs-target="#pane-bot" type="button" role="tab">
+                                <i class="bi bi-robot text-info me-1"></i> 💬 Offline AI Assistant
+                            </button>
+                        </li>
                     </ul>
 
                     <div class="tab-content" id="firstAidTabContent">
@@ -755,6 +760,57 @@
                         <!-- Tab 2: Survival by Disaster Type -->
                         <div class="tab-pane fade" id="pane-disasters" role="tabpanel">
                             <div id="firstAidDisasterTips" class="d-flex flex-column gap-3 font-mono fs-7"></div>
+                        </div>
+
+                        <!-- Tab 3: Offline AI Survival Assistant (Transformers.js) -->
+                        <div class="tab-pane fade" id="pane-bot" role="tabpanel">
+                            <div class="p-3 bg-dark rounded border border-secondary mb-3 font-mono fs-7">
+                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                    <div>
+                                        <strong class="text-info d-block"><i class="bi bi-cpu-fill me-1"></i> CLIENT-SIDE AI SURVIVAL ASSISTANT</strong>
+                                        <span class="text-secondary fs-8">Runs 100% offline inside browser (transformers.js SmolLM2-360M)</span>
+                                    </div>
+                                    <div id="modelStatusBadgeContainer">
+                                        <span id="modelStatusBadge" class="badge bg-secondary font-mono fs-8">Not Downloaded</span>
+                                    </div>
+                                </div>
+
+                                <!-- Download Pre-cache Section -->
+                                <div id="modelDownloadBox" class="p-2 rounded bg-body-tertiary border border-secondary mt-2">
+                                    <p class="fs-8 text-white mb-2">
+                                        To use conversational AI offline, download the small ONNX model (~250MB) while connected to the internet.
+                                    </p>
+                                    <button id="prepareOfflineModelBtn" class="btn btn-sm btn-info font-mono fw-bold text-dark w-100">
+                                        <i class="bi bi-download me-1"></i> Download AI Model for Offline Use (~250MB)
+                                    </button>
+                                    <!-- Progress Bar -->
+                                    <div id="modelProgressContainer" class="mt-2 d-none">
+                                        <div class="progress bg-dark border border-secondary" style="height: 16px;">
+                                            <div id="modelProgressBar" class="progress-bar progress-bar-striped progress-bar-animated bg-info font-mono fs-8" style="width: 0%;">0%</div>
+                                        </div>
+                                        <div id="modelProgressText" class="fs-8 text-info font-mono text-center mt-1">Initializing download...</div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Chat Box UI -->
+                            <div class="p-3 bg-dark rounded border border-secondary d-flex flex-column font-mono" style="height: 320px;">
+                                <div id="offlineChatMessages" class="flex-grow-1 overflow-auto pe-2 d-flex flex-column gap-2 fs-7 mb-3">
+                                    <div class="p-2 rounded bg-secondary bg-opacity-25 text-white border border-secondary">
+                                        <strong class="text-info d-block fs-8"><i class="bi bi-robot me-1"></i> Emergency AI Assistant:</strong>
+                                        Hello! Ask me any medical or first-aid question. I will provide grounded answers from verified Red Cross / WHO procedures.
+                                        <div class="mt-1 text-warning fs-8 border-top border-secondary pt-1">
+                                            ⚠️ Offline assistant — for a real emergency, use SOS or call the hotlines above.
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="input-group">
+                                    <input type="text" id="offlineChatInput" class="form-control form-control-sm bg-dark text-white border-secondary fs-7" placeholder="Ask a first-aid question (e.g. 'how to stop severe bleeding')...">
+                                    <button id="offlineChatSendBtn" class="btn btn-sm btn-info font-mono fw-bold text-dark px-3" type="button">
+                                        <i class="bi bi-send-fill me-1"></i> Ask
+                                    </button>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -850,7 +906,14 @@
     <!-- Scripts -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <!-- Transformers.js (CDN Module) -->
+    <script type="module">
+        import { pipeline, TextStreamer } from 'https://cdn.jsdelivr.net/npm/@huggingface/transformers@latest';
+        window.__transformersPipeline = pipeline;
+        window.__transformersStreamer = TextStreamer;
+    </script>
     <script src="{{ url_for('static', filename='js/firstaid_data.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/offline_bot.js') }}"></script>
     <script src="{{ url_for('static', filename='js/app.js') }}"></script>
     <script>
         if ('serviceWorker' in navigator) {

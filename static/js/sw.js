@@ -3,7 +3,8 @@ const OFFLINE_ASSETS = [
     "/",
     "/static/css/style.css",
     "/static/js/app.js",
-    "/static/js/firstaid_data.js"
+    "/static/js/firstaid_data.js",
+    "/static/js/offline_bot.js"
 ];
 
 self.addEventListener("install", (event) => {
