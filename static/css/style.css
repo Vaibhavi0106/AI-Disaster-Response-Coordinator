@@ -637,3 +637,24 @@ h1, h2, h3, h4, h5, h6, .brand-text {
   .report-paper { background: white !important; color: black !important; border: none !important; box-shadow: none !important; margin: 0 !important; padding: 0 !important; }
   .no-print { display: none !important; }
 }
+
+/* Emergency SOS Button Pulse Animation */
+.btn-sos-pulse {
+  position: relative;
+  box-shadow: 0 0 15px rgba(178, 34, 34, 0.8);
+  animation: sosPulseGlow 2s infinite;
+  transition: all 0.3s ease;
+}
+
+@keyframes sosPulseGlow {
+  0% {
+    box-shadow: 0 0 10px rgba(178, 34, 34, 0.7);
+  }
+  50% {
+    box-shadow: 0 0 25px rgba(255, 193, 7, 0.9);
+  }
+  100% {
+    box-shadow: 0 0 10px rgba(178, 34, 34, 0.7);
+  }
+}
+

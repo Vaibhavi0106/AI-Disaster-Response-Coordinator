@@ -13,6 +13,10 @@ class Config:
     # API Keys
     TAVILY_API_KEY = os.getenv("TAVILY_API_KEY", "").strip()
     OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "").strip()
+    
+    # Emergency SOS Webhook
+    N8N_SOS_WEBHOOK_URL = os.getenv("N8N_SOS_WEBHOOK_URL", "").strip()
 
     # Check live API status
     IS_LIVE_API_AVAILABLE = bool(TAVILY_API_KEY and OPENAI_API_KEY)
+

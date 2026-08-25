@@ -32,6 +32,10 @@
                     <span class="pulse-radar"></span>
                     <span class="text-warning fw-bold">EOC LIVE TELEMETRY: ACTIVE</span>
                 </div>
+                <button id="sosBtn" class="btn btn-danger font-mono fw-bold px-3 py-2 border border-warning d-flex align-items-center gap-2 btn-sos-pulse" data-bs-toggle="modal" data-bs-target="#sosModal">
+                    <i class="bi bi-exclamation-triangle-fill text-warning fs-5"></i>
+                    <span>🚨 SEND SOS</span>
+                </button>
             </div>
         </div>
     </nav>
@@ -509,9 +513,70 @@
         </div>
     </footer>
 
+    <!-- EMERGENCY SOS CONFIRMATION & DISPATCH MODAL -->
+    <div class="modal fade" id="sosModal" tabindex="-1" aria-labelledby="sosModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content glass-panel border-danger text-white">
+                <div class="modal-header border-secondary bg-danger bg-opacity-25">
+                    <h5 class="modal-title font-mono fw-bold text-white d-flex align-items-center gap-2" id="sosModalLabel">
+                        <i class="bi bi-exclamation-triangle-fill text-warning fs-4"></i> EMERGENCY SOS DISPATCH
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body p-4">
+                    <p class="fs-6 fw-bold text-warning mb-1">Are you sure you want to send an emergency SOS?</p>
+                    <p class="fs-7 text-white mb-3">
+                        Your real device location and registered emergency-contact details will be transmitted for immediate emergency dispatch.
+                    </p>
+
+                    <!-- Emergency Contact Details Form (Stored in localStorage) -->
+                    <div class="p-3 bg-dark rounded border border-secondary mb-3 font-mono fs-7">
+                        <strong class="text-warning d-block mb-2"><i class="bi bi-person-lines-fill me-1"></i> REGISTERED EMERGENCY CONTACT DETAILS</strong>
+                        <div class="row g-2">
+                            <div class="col-6">
+                                <label class="text-white fs-8">Your Full Name:</label>
+                                <input type="text" id="sosUserName" class="form-control form-control-sm bg-dark text-white border-secondary" placeholder="e.g. Alex Rivera">
+                            </div>
+                            <div class="col-6">
+                                <label class="text-white fs-8">Your Phone Number:</label>
+                                <input type="tel" id="sosUserPhone" class="form-control form-control-sm bg-dark text-white border-secondary" placeholder="e.g. +1 555-0199">
+                            </div>
+                            <div class="col-6">
+                                <label class="text-white fs-8">Emergency Contact Name:</label>
+                                <input type="text" id="sosContactName" class="form-control form-control-sm bg-dark text-white border-secondary" placeholder="e.g. Sarah Rivera">
+                            </div>
+                            <div class="col-6">
+                                <label class="text-white fs-8">Emergency Contact Phone:</label>
+                                <input type="tel" id="sosContactPhone" class="form-control form-control-sm bg-dark text-white border-secondary" placeholder="e.g. +1 555-0122">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Progress & Status Display Box -->
+                    <div id="sosStatusBox" class="p-3 rounded border font-mono fs-7 mb-3 d-none">
+                        <div id="sosStatusText" class="fw-bold mb-1"></div>
+                        <div id="sosStatusDetails" class="fs-8"></div>
+                        <div id="sosMapLinkContainer" class="mt-2 d-none">
+                            <a id="sosMapLink" href="#" target="_blank" class="btn btn-sm btn-outline-warning text-white fw-bold font-mono">
+                                <i class="bi bi-geo-alt-fill text-danger me-1"></i> Open Location on Google Maps
+                            </a>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer border-secondary">
+                    <button type="button" class="btn btn-secondary font-mono fw-bold" data-bs-dismiss="modal">CANCEL</button>
+                    <button type="button" id="confirmSosBtn" class="btn btn-danger font-mono fw-bold px-4">
+                        <i class="bi bi-send-fill me-1"></i> SEND SOS
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Scripts -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="{{ url_for('static', filename='js/app.js') }}"></script>
 </body>
 </html>
+

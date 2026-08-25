@@ -47,6 +47,9 @@ function initEventListeners() {
     if (exportJsonBtn) exportJsonBtn.addEventListener('click', exportRawJson);
     if (voiceAdvisoryBtn) voiceAdvisoryBtn.addEventListener('click', toggleVoiceAdvisory);
 
+    // Initialize Emergency SOS Handler
+    initEmergencySos();
+
     // AI Copilot Interactions
     if (copilotToggleBtn) {
         copilotToggleBtn.addEventListener('click', () => {
@@ -722,3 +725,148 @@ function toggleVoiceAdvisory() {
 
     window.speechSynthesis.speak(speechUtterance);
 }
+
+/**
+ * Emergency SOS Dispatch Handler
+ */
+function initEmergencySos() {
+    const confirmSosBtn = document.getElementById('confirmSosBtn');
+    const nameInput = document.getElementById('sosUserName');
+    const phoneInput = document.getElementById('sosUserPhone');
+    const contactNameInput = document.getElementById('sosContactName');
+    const contactPhoneInput = document.getElementById('sosContactPhone');
+
+    const statusBox = document.getElementById('sosStatusBox');
+    const statusText = document.getElementById('sosStatusText');
+    const statusDetails = document.getElementById('sosStatusDetails');
+    const mapLinkContainer = document.getElementById('sosMapLinkContainer');
+    const mapLink = document.getElementById('sosMapLink');
+
+    // Load registered emergency contact details from localStorage
+    try {
+        const savedInfo = localStorage.getItem('sos_user_info');
+        if (savedInfo) {
+            const parsed = JSON.parse(savedInfo);
+            if (nameInput && parsed.name) nameInput.value = parsed.name;
+            if (phoneInput && parsed.phone) phoneInput.value = parsed.phone;
+            if (contactNameInput && parsed.contactName) contactNameInput.value = parsed.contactName;
+            if (contactPhoneInput && parsed.contactPhone) contactPhoneInput.value = parsed.contactPhone;
+        }
+    } catch (e) {
+        console.warn('Could not read sos_user_info from localStorage:', e);
+    }
+
+    if (!confirmSosBtn) return;
+
+    confirmSosBtn.addEventListener('click', () => {
+        const name = nameInput ? nameInput.value.trim() : '';
+        const phone = phoneInput ? phoneInput.value.trim() : '';
+        const contactName = contactNameInput ? contactNameInput.value.trim() : '';
+        const contactPhone = contactPhoneInput ? contactPhoneInput.value.trim() : '';
+
+        // Save inputs to localStorage
+        try {
+            localStorage.setItem('sos_user_info', JSON.stringify({
+                name, phone, contactName, contactPhone
+            }));
+        } catch (e) {
+            console.warn('Could not save sos_user_info to localStorage:', e);
+        }
+
+        // Check if browser supports geolocation
+        if (!navigator.geolocation) {
+            if (statusBox) statusBox.classList.remove('d-none');
+            if (statusBox) statusBox.className = 'p-3 rounded border font-mono fs-7 mb-3 bg-danger bg-opacity-25 border-danger text-white';
+            if (statusText) statusText.innerHTML = '⚠️ SOS COULD NOT BE DELIVERED';
+            if (statusDetails) statusDetails.innerHTML = 'Browser does not support native Geolocation API.';
+            return;
+        }
+
+        // Show location acquiring status
+        confirmSosBtn.disabled = true;
+        if (statusBox) statusBox.classList.remove('d-none');
+        if (statusBox) statusBox.className = 'p-3 rounded border font-mono fs-7 mb-3 bg-dark border-warning text-warning';
+        if (statusText) statusText.innerHTML = '<i class="bi bi-geo-alt-fill spin me-1"></i> Acquiring your location...';
+        if (statusDetails) statusDetails.innerHTML = 'Requesting high-accuracy GPS device coordinates...';
+        if (mapLinkContainer) mapLinkContainer.classList.add('d-none');
+
+        navigator.geolocation.getCurrentPosition(
+            async (position) => {
+                const lat = position.coords.latitude;
+                const lng = position.coords.longitude;
+                const accuracy = Math.round(position.coords.accuracy || 0);
+                const timestamp = new Date().toISOString();
+
+                if (statusText) statusText.innerHTML = '<i class="bi bi-check-circle-fill text-success me-1"></i> Location acquired ✓';
+                if (statusDetails) statusDetails.innerHTML = `Lat: ${lat.toFixed(5)}, Lng: ${lng.toFixed(5)} (Accuracy: ${accuracy}m)<br/>Sending emergency alert...`;
+
+                try {
+                    const response = await fetch('/api/sos', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            name: name || 'Registered Emergency User',
+                            phone: phone || 'Not Provided',
+                            emergency_contact_name: contactName || 'Emergency Contact',
+                            emergency_contact_phone: contactPhone || 'Not Provided',
+                            latitude: lat,
+                            longitude: lng,
+                            accuracy: accuracy,
+                            timestamp: timestamp
+                        })
+                    });
+
+                    const data = await response.json();
+                    confirmSosBtn.disabled = false;
+
+                    if (data.status === 'success') {
+                        if (statusBox) statusBox.className = 'p-3 rounded border font-mono fs-7 mb-3 bg-success bg-opacity-25 border-success text-white';
+                        if (statusText) statusText.innerHTML = '🚨 SOS ALERT SENT';
+                        if (statusDetails) statusDetails.innerHTML = `Your emergency contact (${escapeHtml(contactName || 'Emergency Contact')}) has been notified.<br/>✓ Location captured<br/>✓ Emergency details transmitted<br/>✓ Alert delivered`;
+                        if (data.maps_url && mapLink) {
+                            mapLink.href = data.maps_url;
+                            if (mapLinkContainer) mapLinkContainer.classList.remove('d-none');
+                        }
+                    } else if (data.status === 'notification_not_configured') {
+                        if (statusBox) statusBox.className = 'p-3 rounded border font-mono fs-7 mb-3 bg-warning bg-opacity-25 border-warning text-white';
+                        if (statusText) statusText.innerHTML = '⚠️ SOS COULD NOT BE DELIVERED';
+                        if (statusDetails) statusDetails.innerHTML = `Location captured ✓ (GPS: ${lat.toFixed(4)}, ${lng.toFixed(4)}), but notification channel is not configured.<br/><small class="text-warning">N8N_SOS_WEBHOOK_URL is missing in backend .env configuration.</small>`;
+                        if (data.maps_url && mapLink) {
+                            mapLink.href = data.maps_url;
+                            if (mapLinkContainer) mapLinkContainer.classList.remove('d-none');
+                        }
+                    } else {
+                        if (statusBox) statusBox.className = 'p-3 rounded border font-mono fs-7 mb-3 bg-danger bg-opacity-25 border-danger text-white';
+                        if (statusText) statusText.innerHTML = '⚠️ SOS COULD NOT BE DELIVERED';
+                        if (statusDetails) statusDetails.innerHTML = escapeHtml(data.message || 'Backend SOS processing failure.');
+                        if (data.maps_url && mapLink) {
+                            mapLink.href = data.maps_url;
+                            if (mapLinkContainer) mapLinkContainer.classList.remove('d-none');
+                        }
+                    }
+
+                } catch (err) {
+                    confirmSosBtn.disabled = false;
+                    console.error('SOS fetch error:', err);
+                    if (statusBox) statusBox.className = 'p-3 rounded border font-mono fs-7 mb-3 bg-danger bg-opacity-25 border-danger text-white';
+                    if (statusText) statusText.innerHTML = '⚠️ SOS COULD NOT BE DELIVERED';
+                    if (statusDetails) statusDetails.innerHTML = 'Network failure or server unavailable.';
+                }
+            },
+            (error) => {
+                confirmSosBtn.disabled = false;
+                console.warn('Geolocation error:', error);
+                let errReason = 'Geolocation permission denied or position unavailable.';
+                if (error.code === 1) errReason = 'Location permission denied by user/browser.';
+                else if (error.code === 2) errReason = 'Position unavailable (GPS fix failed).';
+                else if (error.code === 3) errReason = 'Location request timed out.';
+
+                if (statusBox) statusBox.className = 'p-3 rounded border font-mono fs-7 mb-3 bg-danger bg-opacity-25 border-danger text-white';
+                if (statusText) statusText.innerHTML = '⚠️ SOS COULD NOT BE DELIVERED';
+                if (statusDetails) statusDetails.innerHTML = escapeHtml(errReason);
+            },
+            { enableHighAccuracy: true, timeout: 12000, maximumAge: 0 }
+        );
+    });
+}
+
