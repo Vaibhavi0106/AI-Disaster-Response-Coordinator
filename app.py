@@ -1,10 +1,13 @@
 import os
 import tempfile
 import logging
-from flask import Flask, render_template, request, jsonify, send_file
+from functools import wraps
+from flask import Flask, render_template, request, jsonify, send_file, session, redirect, url_for
 from config import Config
 from agents.disaster_agent import DisasterAgent
 from agents.report_agent import ReportAgent
+from auth_store import authenticate
+from sos_store import log_sos_event, list_sos_log, mark_sos_reviewed
 
 # Configure Logging
 logging.basicConfig(
@@ -16,10 +19,87 @@ logger = logging.getLogger("AppEngine")
 # Initialize Flask Application
 app = Flask(__name__)
 app.config.from_object(Config)
+app.secret_key = Config.SECRET_KEY
 
 # Instantiate AI Agents
 disaster_agent = DisasterAgent()
 report_agent = ReportAgent()
+
+
+def role_required(required_role: str):
+    """Decorator to enforce server-side role-based access control."""
+    def decorator(f):
+        @wraps(f)
+        def decorated_function(*args, **kwargs):
+            user = session.get("user")
+            if not user or user.get("role") != required_role:
+                return jsonify({
+                    "status": "error",
+                    "message": f"Access denied. Requires '{required_role}' authorization."
+                }), 403
+            return f(*args, **kwargs)
+        return decorated_function
+    return decorator
+
+
+def filter_for_role(disaster_json: dict, role: str) -> dict:
+    """
+    Sanitizes structured disaster JSON output based on user role before sending to client.
+    Admins receive full telemetry. Regular/public users receive only public-safety fields.
+    """
+    if role == "admin":
+        return disaster_json
+
+    # Regular / public view — strip everything not in the allowed set.
+    brief = disaster_json.get("executive_command_brief", {})
+    public_advisory = brief.get("advisory", "") if isinstance(brief, dict) else ""
+
+    allowed_keys = {
+        "disaster_type", "summary", "severity", "affected_locations",
+        "recommended_resources_public", "safety_measures", "evacuation_shelters",
+        "sources_public", "weather_metrics", "impact_radius", "emergency_contacts"
+    }
+
+    filtered = {k: v for k, v in disaster_json.items() if k in allowed_keys}
+
+    if public_advisory:
+        filtered["public_advisory"] = public_advisory
+
+    if "sources" in disaster_json and "sources_public" not in filtered:
+        filtered["sources_public"] = disaster_json["sources"]
+
+    if "recommended_resources" in disaster_json and "recommended_resources_public" not in filtered:
+        filtered["recommended_resources_public"] = disaster_json["recommended_resources"]
+
+    return filtered
+
+
+@app.route("/login", methods=["GET", "POST"])
+def login():
+    """
+    Renders login page and handles credential authentication.
+    """
+    if request.method == "POST":
+        email = request.form.get("email", "").strip()
+        password = request.form.get("password", "").strip()
+        user_info = authenticate(email, password)
+        if user_info:
+            session["user"] = user_info
+            logger.info(f"User '{user_info['name']}' logged in successfully with role '{user_info['role']}'.")
+            return redirect(url_for("index"))
+        else:
+            return render_template("login.html", error="Invalid email or password.")
+    
+    return render_template("login.html")
+
+
+@app.route("/logout", methods=["GET"])
+def logout():
+    """
+    Clears current user session and redirects to homepage.
+    """
+    session.pop("user", None)
+    return redirect(url_for("index"))
 
 
 @app.route("/", methods=["GET"])
@@ -27,7 +107,9 @@ def index():
     """
     Renders Homepage / Emergency Operations Center (EOC) Dashboard.
     """
-    return render_template("index.html")
+    current_user = session.get("user")
+    user_role = current_user.get("role", "regular") if current_user else "regular"
+    return render_template("index.html", user=current_user, role=user_role)
 
 
 @app.route("/report", methods=["GET"])
@@ -35,6 +117,9 @@ def report():
     """
     Renders Printable Incident Briefing Report page.
     """
+    current_user = session.get("user")
+    if not current_user or current_user.get("role") != "admin":
+        return redirect(url_for("login"))
     return render_template("report.html")
 
 
@@ -43,7 +128,7 @@ def analyze_disaster():
     """
     Main API endpoint for disaster query processing.
     Receives JSON body: {"query": "Flood in Chennai"}
-    Returns structured disaster analysis JSON payload.
+    Returns role-filtered disaster analysis JSON payload.
     """
     try:
         data = request.get_json(silent=True) or {}
@@ -60,10 +145,16 @@ def analyze_disaster():
         # Execute LangChain Disaster Agent Workflow
         result_json = disaster_agent.analyze_disaster(query)
 
+        # Apply role-based field filtering before sending to client
+        current_user = session.get("user")
+        user_role = current_user.get("role", "regular") if current_user else "regular"
+        filtered_json = filter_for_role(result_json, user_role)
+
         return jsonify({
             "status": "success",
             "query": query,
-            "data": result_json
+            "role": user_role,
+            "data": filtered_json
         }), 200
 
     except Exception as e:
@@ -75,11 +166,10 @@ def analyze_disaster():
 
 
 @app.route("/api/copilot/chat", methods=["POST"])
+@role_required("admin")
 def copilot_chat():
     """
-    AI Copilot Chat Endpoint.
-    Receives JSON: { "message": "...", "context": { ... } }
-    Returns operational AI answer grounded in current disaster analysis.
+    AI Copilot Chat Endpoint (Admin Only).
     """
     try:
         data = request.get_json(silent=True) or {}
@@ -109,9 +199,10 @@ def copilot_chat():
 
 
 @app.route("/api/report/pdf", methods=["POST"])
+@role_required("admin")
 def download_report_pdf():
     """
-    Generates and returns a downloadable PDF Incident Report.
+    Generates and returns a downloadable PDF Incident Report (Admin Only).
     """
     try:
         disaster_data = request.get_json(silent=True) or {}
@@ -144,9 +235,9 @@ def download_report_pdf():
 @app.route("/api/sos", methods=["POST"])
 def send_emergency_sos():
     """
-    Emergency SOS Dispatch Endpoint.
+    Emergency SOS Dispatch Endpoint (Public).
     Receives JSON payload with user details, live GPS coordinates, accuracy, and timestamp.
-    Validates coordinates and dispatches to n8n webhook if configured.
+    Validates coordinates, logs to in-memory store, and dispatches to n8n webhook if configured.
     """
     try:
         data = request.get_json(silent=True) or {}
@@ -163,6 +254,7 @@ def send_emergency_sos():
 
         # Strict validation: Do NOT accept missing latitude/longitude
         if lat is None or lng is None:
+            log_sos_event(data, "", False, "invalid_coordinates")
             return jsonify({
                 "status": "error",
                 "message": "Invalid or missing device GPS latitude/longitude. Real location is required for SOS dispatch."
@@ -172,6 +264,7 @@ def send_emergency_sos():
             lat_float = float(lat)
             lng_float = float(lng)
         except (ValueError, TypeError):
+            log_sos_event(data, "", False, "invalid_coordinates")
             return jsonify({
                 "status": "error",
                 "message": "Invalid latitude/longitude numeric values."
@@ -198,7 +291,6 @@ def send_emergency_sos():
 
         # Check if n8n webhook URL is configured
         webhook_url = Config.N8N_SOS_WEBHOOK_URL
-        logger.info(f"🔥 ACTUAL N8N WEBHOOK URL BEING USED: {webhook_url}")
         if webhook_url:
             import requests
             payload = {
@@ -216,6 +308,7 @@ def send_emergency_sos():
             try:
                 resp = requests.post(webhook_url, json=payload, headers={"Content-Type": "application/json"}, timeout=10)
                 if resp.status_code in [200, 201, 202]:
+                    log_sos_event(data, maps_url, True, "success")
                     return jsonify({
                         "status": "success",
                         "message": "Emergency SOS alert transmitted and delivered to emergency contact via n8n workflow.",
@@ -223,6 +316,7 @@ def send_emergency_sos():
                         "delivered": True
                     }), 200
                 else:
+                    log_sos_event(data, maps_url, False, "error")
                     return jsonify({
                         "status": "error",
                         "message": f"n8n webhook returned HTTP {resp.status_code}: {resp.text[:200]}",
@@ -231,6 +325,7 @@ def send_emergency_sos():
                     }), 502
             except Exception as w_err:
                 logger.error(f"n8n Webhook POST connection failure: {w_err}")
+                log_sos_event(data, maps_url, False, "error")
                 return jsonify({
                     "status": "error",
                     "message": f"Failed to connect to n8n webhook URL: {str(w_err)}",
@@ -239,6 +334,7 @@ def send_emergency_sos():
                 }), 502
         else:
             logger.info("N8N_SOS_WEBHOOK_URL is not configured in .env. Returning notification_not_configured state.")
+            log_sos_event(data, maps_url, False, "notification_not_configured")
             return jsonify({
                 "status": "notification_not_configured",
                 "message": "Location captured ✓, but N8N_SOS_WEBHOOK_URL is not configured in environment.",
@@ -254,6 +350,36 @@ def send_emergency_sos():
             "message": f"Backend SOS processing failure: {str(e)}"
         }), 500
 
+
+@app.route("/api/sos/log", methods=["GET"])
+@role_required("admin")
+def get_sos_log():
+    """
+    Returns the in-memory SOS event log (Admin Only).
+    """
+    return jsonify({
+        "status": "success",
+        "log": list_sos_log()
+    }), 200
+
+
+@app.route("/api/sos/<int:sos_id>/reviewed", methods=["PATCH"])
+@role_required("admin")
+def update_sos_reviewed(sos_id: int):
+    """
+    Marks an SOS alert as reviewed by an admin (Admin Only).
+    """
+    updated_record = mark_sos_reviewed(sos_id)
+    if updated_record:
+        return jsonify({
+            "status": "success",
+            "record": updated_record
+        }), 200
+    else:
+        return jsonify({
+            "status": "error",
+            "message": f"SOS record #{sos_id} not found."
+        }), 404
 
 
 if __name__ == "__main__":

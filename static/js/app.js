@@ -1,15 +1,43 @@
 /**
- * AI Disaster Response Coordinator - Universal EOC Engine with AI Consensus Engine & Copilot
+ * AI Disaster Response Coordinator - Universal EOC Engine with Role Access & Public SOS
  */
 
 let mapInstance = null;
 let mapMarkers = [];
+let sosMarkers = [];
 let currentAnalysisData = null;
 let speechUtterance = null;
+let userRole = 'regular';
 
 document.addEventListener('DOMContentLoaded', () => {
+    userRole = document.body.getAttribute('data-user-role') || 'regular';
+    applyRoleVisibility(userRole);
     initEventListeners();
+
+    if (userRole === 'admin') {
+        pollAdminSosLog();
+        setInterval(pollAdminSosLog, 15000);
+    }
 });
+
+/**
+ * Applies CSS & DOM visibility based on user role (Admin vs Regular)
+ */
+function applyRoleVisibility(role) {
+    const adminFields = document.querySelectorAll('.admin-only-field');
+    const publicFields = document.querySelectorAll('.public-only-field');
+    const mapHeaderTitle = document.getElementById('mapHeaderTitle');
+
+    if (role === 'admin') {
+        adminFields.forEach(el => el.style.setProperty('display', 'block', 'important'));
+        publicFields.forEach(el => el.style.setProperty('display', 'none', 'important'));
+        if (mapHeaderTitle) mapHeaderTitle.textContent = 'Tactical Impact Map';
+    } else {
+        adminFields.forEach(el => el.style.setProperty('display', 'none', 'important'));
+        publicFields.forEach(el => el.style.setProperty('display', 'block', 'important'));
+        if (mapHeaderTitle) mapHeaderTitle.textContent = 'Affected Area Map';
+    }
+}
 
 function initEventListeners() {
     const searchBtn = document.getElementById('searchBtn');
@@ -19,7 +47,7 @@ function initEventListeners() {
     const exportJsonBtn = document.getElementById('exportJsonBtn');
     const voiceAdvisoryBtn = document.getElementById('voiceAdvisoryBtn');
 
-    // Copilot Listeners
+    // Copilot Listeners (Admin Only)
     const copilotToggleBtn = document.getElementById('copilotToggleBtn');
     const copilotCloseBtn = document.getElementById('copilotCloseBtn');
     const copilotSendBtn = document.getElementById('copilotSendBtn');
@@ -50,7 +78,7 @@ function initEventListeners() {
     // Initialize Emergency SOS Handler
     initEmergencySos();
 
-    // AI Copilot Interactions
+    // AI Copilot Interactions (Admin Only)
     if (copilotToggleBtn) {
         copilotToggleBtn.addEventListener('click', () => {
             const panel = document.getElementById('copilotPanel');
@@ -134,15 +162,15 @@ async function performAnalysis() {
 }
 
 /**
- * Animated Live AI Agent Execution Workflow (5 Sequential Steps)
+ * Animated Live AI Agent Execution Workflow
  */
 async function runLoadingProgress() {
     const steps = [
-        { id: 'step-search', delay: 600 },
-        { id: 'step-analyze', delay: 700 },
-        { id: 'step-classify', delay: 600 },
-        { id: 'step-recommend', delay: 600 },
-        { id: 'step-report', delay: 500 }
+        { id: 'step-search', delay: 400 },
+        { id: 'step-analyze', delay: 400 },
+        { id: 'step-classify', delay: 400 },
+        { id: 'step-recommend', delay: 400 },
+        { id: 'step-report', delay: 300 }
     ];
 
     steps.forEach(s => {
@@ -203,62 +231,89 @@ function renderDashboard(data) {
     }
 
     // 3. Priority Badge & Metric Boxes
-    document.getElementById('priorityBadge').textContent = data.priority || 'P1 - High Priority';
+    const priorityBadge = document.getElementById('priorityBadge');
+    if (priorityBadge) priorityBadge.textContent = data.priority || 'P1 - High Priority';
+    
     document.getElementById('metricRadius').textContent = data.impact_radius || '20 - 35 km';
-    document.getElementById('metricRisk').textContent = data.risk_index || '9.2 / 10';
-    document.getElementById('metricTeams').textContent = (data.recommended_resources || []).length + ' Key Squads';
+    
+    const metricRisk = document.getElementById('metricRisk');
+    if (metricRisk) metricRisk.textContent = data.risk_index || '9.2 / 10';
+    
+    const metricTeams = document.getElementById('metricTeams');
+    if (metricTeams) metricTeams.textContent = (data.recommended_resources || data.recommended_resources_public || []).length + ' Key Squads';
 
-    // 4. Executive Command Brief
+    // 4. Executive Command Brief (Admin Only) & Public Advisory (Public Only)
     const brief = data.executive_command_brief || {};
-    document.getElementById('briefSummary').textContent = brief.summary || data.summary;
-    document.getElementById('briefPriorities').textContent = brief.priorities || '1. Life evacuation. 2. Medical deployment. 3. Power grid safety.';
-    document.getElementById('briefActions').textContent = brief.actions || 'Mobilize rescue squads, open emergency relief camps.';
-    document.getElementById('briefAdvisory').textContent = brief.advisory || 'Instruct public in flood zones to move to upper floors or shelters.';
+    const briefSummary = document.getElementById('briefSummary');
+    if (briefSummary) briefSummary.textContent = brief.summary || data.summary;
+    const briefPriorities = document.getElementById('briefPriorities');
+    if (briefPriorities) briefPriorities.textContent = brief.priorities || '1. Life evacuation. 2. Medical deployment. 3. Power grid safety.';
+    const briefActions = document.getElementById('briefActions');
+    if (briefActions) briefActions.textContent = brief.actions || 'Mobilize rescue squads, open emergency relief camps.';
+    const briefAdvisory = document.getElementById('briefAdvisory');
+    if (briefAdvisory) briefAdvisory.textContent = brief.advisory || data.public_advisory || 'Instruct public in low-lying zones to move to upper floors or official shelters.';
 
-    // 5. AI Decision Intelligence Panel
+    const publicAdvisoryText = document.getElementById('publicAdvisoryText');
+    if (publicAdvisoryText) {
+        publicAdvisoryText.textContent = data.public_advisory || brief.advisory || (data.safety_measures ? data.safety_measures.join('. ') : 'Follow official local emergency guidance.');
+    }
+
+    // 5. AI Decision Intelligence Panel (Admin Only)
     const decision = data.ai_decision_intelligence || {};
-    const conf = decision.confidence_score || '95%';
-    document.getElementById('aiConfidenceScore').textContent = conf;
-    const bar = document.getElementById('aiConfidenceBar');
-    if (bar) bar.style.width = conf;
+    const confScore = document.getElementById('aiConfidenceScore');
+    if (confScore) confScore.textContent = decision.confidence_score || '95%';
+    const confBar = document.getElementById('aiConfidenceBar');
+    if (confBar) confBar.style.width = decision.confidence_score || '95%';
 
-    document.getElementById('aiSeverityReasoning').textContent = decision.severity_reasoning || 
-        `Classified as ${data.severity} severity due to high population impact, transport disruption, and life safety risks.`;
+    const sevReasoning = document.getElementById('aiSeverityReasoning');
+    if (sevReasoning) {
+        sevReasoning.textContent = decision.severity_reasoning || 
+            `Classified as ${data.severity} severity due to high population impact, transport disruption, and life safety risks.`;
+    }
 
     const riskBox = document.getElementById('aiRiskFactors');
-    riskBox.innerHTML = '';
-    const risks = decision.risk_factors || ["Submerged causeways", "Power cuts", "High population density"];
-    risks.forEach(r => {
-        const d = document.createElement('div');
-        d.innerHTML = `<i class="bi bi-exclamation-triangle-fill text-danger me-1"></i> ${r}`;
-        riskBox.appendChild(d);
-    });
+    if (riskBox) {
+        riskBox.innerHTML = '';
+        const risks = decision.risk_factors || ["Submerged causeways", "Power cuts", "High population density"];
+        risks.forEach(r => {
+            const d = document.createElement('div');
+            d.innerHTML = `<i class="bi bi-exclamation-triangle-fill text-danger me-1"></i> ${r}`;
+            riskBox.appendChild(d);
+        });
+    }
 
     const evidenceBox = document.getElementById('aiEvidence');
-    evidenceBox.innerHTML = '';
-    const evidence = decision.supporting_evidence || ["Satellite precipitation telemetry", "Emergency hotline logs"];
-    evidence.forEach(e => {
-        const d = document.createElement('div');
-        d.innerHTML = `<i class="bi bi-file-earmark-check-fill text-success me-1"></i> ${e}`;
-        evidenceBox.appendChild(d);
-    });
+    if (evidenceBox) {
+        evidenceBox.innerHTML = '';
+        const evidence = decision.supporting_evidence || ["Satellite precipitation telemetry", "Emergency hotline logs"];
+        evidence.forEach(e => {
+            const d = document.createElement('div');
+            d.innerHTML = `<i class="bi bi-file-earmark-check-fill text-success me-1"></i> ${e}`;
+            evidenceBox.appendChild(d);
+        });
+    }
 
-    document.getElementById('aiVerificationStatus').textContent = decision.verification_status || 'Multi-Source Verified';
+    const verifyStatus = document.getElementById('aiVerificationStatus');
+    if (verifyStatus) verifyStatus.textContent = decision.verification_status || 'Multi-Source Verified';
 
-    // NEW: Render AI Consensus Engine (5 Specialized Agents with Sequential Animation)
+    // AI Consensus Engine (Admin Only)
     renderConsensusEngine(data.ai_consensus_engine || {});
 
-    // 6. Predictive Intelligence Card
+    // 6. Predictive Intelligence Card (Admin Only)
     const pred = data.predictive_intelligence || {};
     const esc = pred.escalation_risk || { value: '78%', trend: 'up' };
     const hosp = pred.hospital_load || { value: '85%', trend: 'up' };
     const road = pred.road_accessibility || { value: '35%', trend: 'down' };
     const dem = pred.resource_demand || { value: '92%', trend: 'up' };
 
-    document.getElementById('predEscalation').innerHTML = `${esc.value} <i class="bi bi-arrow-up-right-circle-fill text-danger"></i>`;
-    document.getElementById('predHospital').innerHTML = `${hosp.value} <i class="bi bi-arrow-up-right-circle-fill text-danger"></i>`;
-    document.getElementById('predRoads').innerHTML = `${road.value} <i class="bi bi-arrow-down-right-circle-fill text-warning"></i>`;
-    document.getElementById('predDemand').innerHTML = `${dem.value} <i class="bi bi-arrow-up-right-circle-fill text-cyan"></i>`;
+    const predEsc = document.getElementById('predEscalation');
+    if (predEsc) predEsc.innerHTML = `${esc.value} <i class="bi bi-arrow-up-right-circle-fill text-danger"></i>`;
+    const predHosp = document.getElementById('predHospital');
+    if (predHosp) predHosp.innerHTML = `${hosp.value} <i class="bi bi-arrow-up-right-circle-fill text-danger"></i>`;
+    const predRoads = document.getElementById('predRoads');
+    if (predRoads) predRoads.innerHTML = `${road.value} <i class="bi bi-arrow-down-right-circle-fill text-warning"></i>`;
+    const predDemand = document.getElementById('predDemand');
+    if (predDemand) predDemand.innerHTML = `${dem.value} <i class="bi bi-arrow-up-right-circle-fill text-cyan"></i>`;
 
     // 7. Weather Telemetry
     const weather = data.weather_metrics || {};
@@ -334,12 +389,13 @@ function renderDashboard(data) {
         contactList.appendChild(item);
     });
 
-    // 11. Recommended Rescue Resources WITH REASONING
+    // 11. Recommended Rescue Resources
     const resourcesList = document.getElementById('resourcesList');
     resourcesList.innerHTML = '';
     const resourceReasoning = data.resource_reasoning || [];
+    const publicResources = data.recommended_resources_public || data.recommended_resources || [];
 
-    if (Array.isArray(resourceReasoning) && resourceReasoning.length > 0) {
+    if (userRole === 'admin' && Array.isArray(resourceReasoning) && resourceReasoning.length > 0) {
         resourceReasoning.forEach(rr => {
             const item = document.createElement('div');
             item.className = 'list-custom-item flex-column align-items-start';
@@ -356,7 +412,7 @@ function renderDashboard(data) {
             resourcesList.appendChild(item);
         });
     } else {
-        (data.recommended_resources || []).forEach(res => {
+        publicResources.forEach(res => {
             const item = document.createElement('div');
             item.className = 'list-custom-item';
             item.innerHTML = `<i class="bi bi-box-seam-fill text-warning"></i> <span style="color: #ffffff; font-weight: 600;">${res}</span>`;
@@ -374,30 +430,36 @@ function renderDashboard(data) {
         safetyList.appendChild(item);
     });
 
-    // 13. Timeline Updates
+    // 13. Timeline Updates (Admin Only)
     const timelineList = document.getElementById('timelineList');
-    timelineList.innerHTML = '';
-    const timeline = data.incident_timeline || [];
-    timeline.forEach(t => {
-        const item = document.createElement('div');
-        item.className = 'mb-2 pb-2 border-bottom border-secondary';
-        item.innerHTML = `
-            <span class="font-mono text-warning fw-bold fs-7">[${t.time}]</span>
-            <span style="color: #ffffff; font-weight: 600; font-size: 0.9rem;" class="ms-2">${t.event}</span>
-        `;
-        timelineList.appendChild(item);
-    });
+    if (timelineList) {
+        timelineList.innerHTML = '';
+        const timeline = data.incident_timeline || [];
+        timeline.forEach(t => {
+            const item = document.createElement('div');
+            item.className = 'mb-2 pb-2 border-bottom border-secondary';
+            item.innerHTML = `
+                <span class="font-mono text-warning fw-bold fs-7">[${t.time}]</span>
+                <span style="color: #ffffff; font-weight: 600; font-size: 0.9rem;" class="ms-2">${t.event}</span>
+            `;
+            timelineList.appendChild(item);
+        });
+    }
 
-    // 14. Source Verification Panel
+    // 14. Source Verification Panel & Links
     const ver = data.source_verification || {};
-    document.getElementById('verifyGov').textContent = ver.government_advisories || 'Government Bulletins: Verified';
-    document.getElementById('verifyWeather').textContent = ver.weather_reports || 'Weather Radar: Active';
-    document.getElementById('verifyNews').textContent = ver.news_reports || 'News Media Feeds: Verified';
-    document.getElementById('verifyOverallConfidence').textContent = ver.overall_confidence || '96%';
+    const verifyGov = document.getElementById('verifyGov');
+    if (verifyGov) verifyGov.textContent = ver.government_advisories || 'Government Bulletins: Verified';
+    const verifyWeather = document.getElementById('verifyWeather');
+    if (verifyWeather) verifyWeather.textContent = ver.weather_reports || 'Weather Radar: Active';
+    const verifyNews = document.getElementById('verifyNews');
+    if (verifyNews) verifyNews.textContent = ver.news_reports || 'News Media Feeds: Verified';
+    const verifyConfidence = document.getElementById('verifyOverallConfidence');
+    if (verifyConfidence) verifyConfidence.textContent = ver.overall_confidence || '96%';
 
     const sourcesList = document.getElementById('sourcesList');
     sourcesList.innerHTML = '';
-    const sources = data.sources || [];
+    const sources = data.sources_public || data.sources || [];
     if (sources.length > 0) {
         sources.forEach(src => {
             const li = document.createElement('li');
@@ -411,6 +473,9 @@ function renderDashboard(data) {
 
     // STEP B: INITIALIZE LEAFLET MAP
     initLeafletMap(locations, data.severity);
+
+    // Apply role-based DOM visibility
+    applyRoleVisibility(userRole);
 
     dashboardResults.scrollIntoView({ behavior: 'smooth' });
 }
@@ -459,25 +524,29 @@ function renderConsensusEngine(consensus) {
 
         grid.appendChild(col);
 
-        // Sequential staggered animation
         setTimeout(() => {
             col.style.opacity = '1';
             col.style.transform = 'translateY(0)';
-        }, idx * 120);
+        }, idx * 100);
     });
 
-    document.getElementById('consensusOverallConfidence').textContent = consensus.overall_consensus_confidence || '95%';
-    document.getElementById('consensusAgreementScore').textContent = consensus.agreement_score || '5/5 Full Consensus (100%)';
-    document.getElementById('consensusFinalPriority').textContent = consensus.final_operational_priority || 'P1 - Immediate Intervention Dispatch';
-    document.getElementById('consensusFinalSummary').textContent = consensus.final_consensus_summary || 'All 5 specialized AI agents unanimously agree on P1 Critical response mobilization based on multi-source risk telemetry.';
+    const confEl = document.getElementById('consensusOverallConfidence');
+    if (confEl) confEl.textContent = consensus.overall_consensus_confidence || '95%';
+    const scoreEl = document.getElementById('consensusAgreementScore');
+    if (scoreEl) scoreEl.textContent = consensus.agreement_score || '5/5 Full Consensus (100%)';
+    const prioEl = document.getElementById('consensusFinalPriority');
+    if (prioEl) prioEl.textContent = consensus.final_operational_priority || 'P1 - Immediate Intervention Dispatch';
+    const sumEl = document.getElementById('consensusFinalSummary');
+    if (sumEl) sumEl.textContent = consensus.final_consensus_summary || 'All 5 specialized AI agents unanimously agree on P1 Critical response mobilization based on multi-source risk telemetry.';
 }
 
 /**
- * AI COPILOT CHAT FUNCTIONALITY
+ * AI COPILOT CHAT FUNCTIONALITY (Admin Only)
  */
 async function sendCopilotMessage(customQuestion = null) {
     const input = document.getElementById('copilotInput');
     const msgContainer = document.getElementById('copilotMessages');
+    if (!msgContainer) return;
     
     const questionText = customQuestion || (input ? input.value.trim() : '');
     if (!questionText) return;
@@ -491,7 +560,7 @@ async function sendCopilotMessage(customQuestion = null) {
     userMsgDiv.className = 'copilot-msg msg-user';
     userMsgDiv.innerHTML = `
         <div>${escapeHtml(questionText)}</div>
-        <div class="copilot-msg-meta text-end">[${timestamp}] YOU</div>
+        <div class="copilot-msg-meta text-end">[${timestamp}] COMMANDER</div>
     `;
     msgContainer.appendChild(userMsgDiv);
     msgContainer.scrollTop = msgContainer.scrollHeight;
@@ -519,7 +588,6 @@ async function sendCopilotMessage(customQuestion = null) {
         const data = await response.json();
         const aiAnswer = data.answer || "Current data does not contain this information.";
 
-        // Remove typing indicator
         const typingEl = document.getElementById('copilotTyping');
         if (typingEl) typingEl.remove();
 
@@ -566,6 +634,18 @@ function escapeHtml(text) {
 }
 
 /**
+ * Helper to get yesterday's date in YYYY-MM-DD format for NASA GIBS imagery
+ */
+function getNasaGibsDate() {
+    const d = new Date();
+    d.setDate(d.getDate() - 1);
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+}
+
+/**
  * Leaflet Map Initialization
  */
 function initLeafletMap(locations, defaultSeverity) {
@@ -595,13 +675,43 @@ function initLeafletMap(locations, defaultSeverity) {
         zoomControl: true
     });
 
+    // Base Layer 1: Street Map (Carto Dark / OSM)
     const darkTiles = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
         attribution: '&copy; OpenStreetMap contributors &copy; CARTO',
         subdomains: 'abcd',
         maxZoom: 19
     });
 
+    // Base Layer 2: Esri World Imagery (Satellite)
+    const esriSatellite = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+        attribution: 'Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community',
+        maxZoom: 19
+    });
+
+    // Optional Overlay: NASA GIBS VIIRS/MODIS True-Color Imagery
+    const gibsDate = getNasaGibsDate();
+    const nasaGibsOverlay = L.tileLayer(`https://gibs-{s}.earthdata.nasa.gov/wmts/epsg3857/best/VIIRS_SNPP_CorrectedReflectance_TrueColor/default/${gibsDate}/GoogleMapsCompatible_Level9/{z}/{y}/{x}.jpg`, {
+        attribution: '&copy; NASA GIBS / Earthdata',
+        subdomains: ['a', 'b', 'c'],
+        maxZoom: 19,
+        maxNativeZoom: 9,
+        opacity: 0.75
+    });
+
+    // Default base layer on load stays Street Map
     darkTiles.addTo(mapInstance);
+
+    // Layer Control for base layers and optional overlay
+    const baseMaps = {
+        "Street Map": darkTiles,
+        "Satellite": esriSatellite
+    };
+
+    const overlayMaps = {
+        "NASA Satellite Overlay (VIIRS)": nasaGibsOverlay
+    };
+
+    L.control.layers(baseMaps, overlayMaps, { collapsed: true }).addTo(mapInstance);
 
     setTimeout(() => {
         if (mapInstance) {
@@ -708,9 +818,10 @@ function toggleVoiceAdvisory() {
         return;
     }
 
-    if (!currentAnalysisData || !currentAnalysisData.safety_measures) return;
+    const textToSpeak = currentAnalysisData && currentAnalysisData.safety_measures ?
+        `Emergency Public Advisory for ${currentAnalysisData.disaster_type}. ${currentAnalysisData.safety_measures.join('. ')}` :
+        "Emergency public advisory active. Please stay tuned for official instructions.";
 
-    const textToSpeak = `Emergency Public Advisory for ${currentAnalysisData.disaster_type}. ${currentAnalysisData.safety_measures.join('. ')}`;
     speechUtterance = new SpeechSynthesisUtterance(textToSpeak);
     speechUtterance.rate = 0.95;
     speechUtterance.pitch = 1.0;
@@ -727,7 +838,7 @@ function toggleVoiceAdvisory() {
 }
 
 /**
- * Emergency SOS Dispatch Handler
+ * Emergency SOS Public Dispatch Handler
  */
 function initEmergencySos() {
     const confirmSosBtn = document.getElementById('confirmSosBtn');
@@ -742,7 +853,6 @@ function initEmergencySos() {
     const mapLinkContainer = document.getElementById('sosMapLinkContainer');
     const mapLink = document.getElementById('sosMapLink');
 
-    // Load registered emergency contact details from localStorage
     try {
         const savedInfo = localStorage.getItem('sos_user_info');
         if (savedInfo) {
@@ -764,7 +874,6 @@ function initEmergencySos() {
         const contactName = contactNameInput ? contactNameInput.value.trim() : '';
         const contactPhone = contactPhoneInput ? contactPhoneInput.value.trim() : '';
 
-        // Save inputs to localStorage
         try {
             localStorage.setItem('sos_user_info', JSON.stringify({
                 name, phone, contactName, contactPhone
@@ -773,7 +882,6 @@ function initEmergencySos() {
             console.warn('Could not save sos_user_info to localStorage:', e);
         }
 
-        // Check if browser supports geolocation
         if (!navigator.geolocation) {
             if (statusBox) statusBox.classList.remove('d-none');
             if (statusBox) statusBox.className = 'p-3 rounded border font-mono fs-7 mb-3 bg-danger bg-opacity-25 border-danger text-white';
@@ -782,7 +890,6 @@ function initEmergencySos() {
             return;
         }
 
-        // Show location acquiring status
         confirmSosBtn.disabled = true;
         if (statusBox) statusBox.classList.remove('d-none');
         if (statusBox) statusBox.className = 'p-3 rounded border font-mono fs-7 mb-3 bg-dark border-warning text-warning';
@@ -818,6 +925,9 @@ function initEmergencySos() {
 
                     const data = await response.json();
                     confirmSosBtn.disabled = false;
+
+                    // If logged in as admin, immediately refresh the SOS command log
+                    if (userRole === 'admin') pollAdminSosLog();
 
                     if (data.status === 'success') {
                         if (statusBox) statusBox.className = 'p-3 rounded border font-mono fs-7 mb-3 bg-success bg-opacity-25 border-success text-white';
@@ -870,3 +980,157 @@ function initEmergencySos() {
     });
 }
 
+/**
+ * Admin SOS Command Log Polling & Map Plotting
+ */
+async function pollAdminSosLog() {
+    if (userRole !== 'admin') return;
+
+    try {
+        const response = await fetch('/api/sos/log');
+        if (!response.ok) return;
+
+        const data = await response.json();
+        if (data.status === 'success' && Array.isArray(data.log)) {
+            renderAdminSosTable(data.log);
+            plotSosMarkersOnMap(data.log);
+        }
+    } catch (e) {
+        console.warn('Admin SOS Log polling error:', e);
+    }
+}
+
+function renderAdminSosTable(logs) {
+    const tbody = document.getElementById('sosLogTableBody');
+    if (!tbody) return;
+
+    if (logs.length === 0) {
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="7" class="text-center py-4 text-warning">
+                    <i class="bi bi-inbox fs-3 d-block mb-1"></i>
+                    No emergency SOS alerts logged yet.
+                </td>
+            </tr>
+        `;
+        return;
+    }
+
+    tbody.innerHTML = '';
+    logs.forEach(item => {
+        const tr = document.createElement('tr');
+        if (item.admin_reviewed) {
+            tr.className = 'opacity-75 bg-dark';
+        }
+
+        // Delivery Status Badge formatting
+        let deliveryBadge = '';
+        if (item.delivery_status === 'success') {
+            deliveryBadge = '<span class="badge bg-success text-white font-mono"><i class="bi bi-check-circle-fill me-1"></i> Delivered via n8n</span>';
+        } else if (item.delivery_status === 'notification_not_configured') {
+            deliveryBadge = '<span class="badge bg-warning text-dark font-mono"><i class="bi bi-exclamation-triangle-fill me-1"></i> Webhook not configured</span>';
+        } else {
+            deliveryBadge = '<span class="badge bg-danger text-white font-mono"><i class="bi bi-x-circle-fill me-1"></i> Delivery failed</span>';
+        }
+
+        // Formatted timestamp
+        let formattedTime = item.logged_at;
+        try {
+            const d = new Date(item.logged_at);
+            formattedTime = d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }) + ' (' + d.toLocaleDateString() + ')';
+        } catch (e) {}
+
+        const reviewedBtn = item.admin_reviewed ?
+            `<span class="badge bg-secondary text-white font-mono"><i class="bi bi-check2-all me-1"></i> Reviewed</span>` :
+            `<button class="btn btn-sm btn-outline-success font-mono" onclick="markSosReviewed(${item.id})"><i class="bi bi-check-lg me-1"></i> Mark Reviewed</button>`;
+
+        tr.innerHTML = `
+            <td class="fw-bold text-warning font-mono">#${item.id}</td>
+            <td class="text-white font-mono fs-8">${formattedTime}</td>
+            <td>
+                <strong class="text-white d-block">${escapeHtml(item.name)}</strong>
+                <span class="text-warning font-mono fs-8">${escapeHtml(item.phone)}</span>
+            </td>
+            <td>
+                <strong class="text-white d-block">${escapeHtml(item.emergency_contact_name)}</strong>
+                <span class="text-warning font-mono fs-8">${escapeHtml(item.emergency_contact_phone)}</span>
+            </td>
+            <td>
+                <a href="${item.maps_url}" target="_blank" class="btn btn-sm btn-outline-cyan font-mono text-cyan p-1 fs-8 text-decoration-none">
+                    <i class="bi bi-geo-alt-fill me-1"></i> GPS: ${item.latitude ? item.latitude.toFixed(4) : 'N/A'}, ${item.longitude ? item.longitude.toFixed(4) : 'N/A'}
+                </a>
+                <small class="d-block text-white font-mono fs-8 mt-1">Accuracy: ${item.accuracy}m</small>
+            </td>
+            <td>${deliveryBadge}</td>
+            <td>
+                <div class="d-flex align-items-center gap-1">
+                    <a href="tel:${escapeHtml(item.phone)}" class="btn btn-sm btn-danger font-mono p-1 fs-8" title="Call Person">
+                        <i class="bi bi-telephone-fill me-1"></i> Call
+                    </a>
+                    ${reviewedBtn}
+                </div>
+            </td>
+        `;
+        tbody.appendChild(tr);
+    });
+}
+
+async function markSosReviewed(sosId) {
+    try {
+        const resp = await fetch(`/api/sos/${sosId}/reviewed`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' }
+        });
+        if (resp.ok) {
+            pollAdminSosLog();
+        } else {
+            alert('Failed to mark SOS as reviewed.');
+        }
+    } catch (e) {
+        console.error('Error marking SOS reviewed:', e);
+    }
+}
+
+/**
+ * Plots live SOS distress signals as pulsing red circle markers on the Leaflet map
+ */
+function plotSosMarkersOnMap(logs) {
+    if (!mapInstance) return;
+
+    // Clear existing SOS markers
+    sosMarkers.forEach(m => mapInstance.removeLayer(m));
+    sosMarkers = [];
+
+    logs.forEach(item => {
+        if (item.latitude && item.longitude) {
+            const sosMarker = L.circleMarker([item.latitude, item.longitude], {
+                radius: 14,
+                fillColor: '#FF0055',
+                color: '#FFFFFF',
+                weight: 3,
+                opacity: 1,
+                fillOpacity: 0.9
+            }).addTo(mapInstance);
+
+            const popupContent = `
+                <div style="padding: 6px; min-width: 200px; background: #1a1a1a; color: #ffffff;">
+                    <strong style="font-size: 1.1rem; color: #FF0055; display: block; margin-bottom: 2px;">🚨 EMERGENCY SOS #${item.id}</strong>
+                    <span style="font-weight: 700; color: #ffffff; font-size: 0.9rem; display: block;">
+                        Person: ${escapeHtml(item.name)} (${escapeHtml(item.phone)})
+                    </span>
+                    <span style="color: #FFC107; font-size: 0.85rem; font-weight: 600; display: block; margin-top: 4px;">
+                        Contact: ${escapeHtml(item.emergency_contact_name)} (${escapeHtml(item.emergency_contact_phone)})
+                    </span>
+                    <div style="margin-top: 8px;">
+                        <a href="${item.maps_url}" target="_blank" style="color: #00e5ff; font-weight: 700; text-decoration: none;">
+                            <i class="bi bi-geo-alt-fill"></i> Open Google Maps
+                        </a>
+                    </div>
+                </div>
+            `;
+
+            sosMarker.bindPopup(popupContent);
+            sosMarkers.push(sosMarker);
+        }
+    });
+}

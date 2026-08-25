@@ -14,7 +14,7 @@
     <!-- Custom High-Contrast EOC CSS -->
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 </head>
-<body>
+<body data-user-role="{{ role }}">
 
     <!-- Navigation Bar -->
     <nav class="navbar navbar-expand-lg navbar-eoc sticky-top">
@@ -32,6 +32,28 @@
                     <span class="pulse-radar"></span>
                     <span class="text-warning fw-bold">EOC LIVE TELEMETRY: ACTIVE</span>
                 </div>
+
+                <!-- User Role / Authentication Badge -->
+                <div class="d-flex align-items-center gap-2">
+                    {% if user %}
+                        <div class="px-3 py-1 rounded bg-dark border border-secondary font-mono fs-7 text-white d-flex align-items-center gap-2">
+                            <i class="bi bi-person-circle text-warning fs-6"></i>
+                            <div>
+                                <strong class="d-block leading-tight">{{ user.name }}</strong>
+                                <span class="badge {% if user.role == 'admin' %}bg-danger{% else %}bg-info text-dark{% endif %} font-mono fs-8 p-1">{{ user.role|upper }}</span>
+                            </div>
+                        </div>
+                        <a href="/logout" class="btn btn-outline-secondary font-mono fs-7 text-white px-2 py-1" title="Log Out">
+                            <i class="bi bi-box-arrow-right me-1"></i> Log Out
+                        </a>
+                    {% else %}
+                        <a href="/login" class="btn btn-outline-warning font-mono fs-7 fw-bold px-3 py-1">
+                            <i class="bi bi-person-badge-fill me-1"></i> Demo Login / Roles
+                        </a>
+                    {% endif %}
+                </div>
+
+                <!-- Public Emergency SOS Button -->
                 <button id="sosBtn" class="btn btn-danger font-mono fw-bold px-3 py-2 border border-warning d-flex align-items-center gap-2 btn-sos-pulse" data-bs-toggle="modal" data-bs-target="#sosModal">
                     <i class="bi bi-exclamation-triangle-fill text-warning fs-5"></i>
                     <span>🚨 SEND SOS</span>
@@ -92,17 +114,54 @@
         <!-- Dashboard Results Section -->
         <div id="dashboardResults">
             
+            <!-- ADMIN ONLY: SOS Alert Command Log Panel -->
+            <div id="adminSosLogPanel" class="glass-panel p-4 mb-4 border-start border-4 border-danger {% if role != 'admin' %}d-none{% endif %}">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h5 class="text-danger fw-bold mb-0 d-flex align-items-center gap-2">
+                        <i class="bi bi-exclamation-octagon-fill text-danger fs-4"></i> Emergency SOS Command Log
+                    </h5>
+                    <div class="d-flex align-items-center gap-2 font-mono fs-7 text-warning">
+                        <span class="spinner-grow spinner-grow-sm text-danger" role="status"></span>
+                        <span>Live Monitoring (Polling 15s)</span>
+                    </div>
+                </div>
+                
+                <div class="table-responsive">
+                    <table class="table table-dark table-hover align-middle mb-0 font-mono fs-7 border-secondary">
+                        <thead class="table-secondary text-white">
+                            <tr>
+                                <th scope="col"># ID</th>
+                                <th scope="col">Logged At</th>
+                                <th scope="col">Person & Phone</th>
+                                <th scope="col">Emergency Contact</th>
+                                <th scope="col">Location & GPS</th>
+                                <th scope="col">Delivery Status</th>
+                                <th scope="col">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="sosLogTableBody">
+                            <tr>
+                                <td colspan="7" class="text-center py-4 text-warning">
+                                    <i class="bi bi-inbox fs-3 d-block mb-1"></i>
+                                    No emergency SOS alerts logged yet.
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
             <!-- EOC Top Action Banner -->
             <div class="glass-panel p-4 mb-4 d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 border-start border-4 border-danger">
                 <div>
                     <div class="d-flex align-items-center flex-wrap gap-3 mb-2">
                         <h2 id="disasterType" class="mb-0 text-white fw-bold">Emergency Incident</h2>
                         <span id="severityBadge" class="badge-severity badge-critical">Critical</span>
-                        <span id="priorityBadge" class="badge-priority">P1 - High Priority</span>
+                        <span id="priorityBadge" class="badge-priority admin-only-field">P1 - High Priority</span>
                     </div>
                     <p class="text-warning mb-0 font-mono fs-7 fw-bold"><i class="bi bi-shield-check me-1"></i> Live Emergency Command Briefing | Operational Dispatch Active</p>
                 </div>
-                <div class="d-flex align-items-center gap-2">
+                <div class="d-flex align-items-center gap-2 admin-only-field">
                     <button id="exportJsonBtn" class="btn btn-outline-warning font-mono fw-bold text-white">
                         <i class="bi bi-download me-1"></i> Export JSON
                     </button>
@@ -112,7 +171,7 @@
                 </div>
             </div>
 
-            <!-- Key Metrics Bar (4 Stat Cards) -->
+            <!-- Key Metrics Bar -->
             <div class="row g-3 mb-4">
                 <div class="col-md-3 col-6">
                     <div class="metric-box">
@@ -120,13 +179,13 @@
                         <div id="metricRadius" class="metric-value font-mono">20 - 35 km</div>
                     </div>
                 </div>
-                <div class="col-md-3 col-6">
+                <div class="col-md-3 col-6 admin-only-field">
                     <div class="metric-box">
                         <div class="metric-label"><i class="bi bi-exclamation-triangle me-1"></i> Risk Level Index</div>
                         <div id="metricRisk" class="metric-value font-mono text-danger">9.2 / 10</div>
                     </div>
                 </div>
-                <div class="col-md-3 col-6">
+                <div class="col-md-3 col-6 admin-only-field">
                     <div class="metric-box">
                         <div class="metric-label"><i class="bi bi-box-seam me-1"></i> Required Rescue Assets</div>
                         <div id="metricTeams" class="metric-value font-mono text-warning">5 Key Squads</div>
@@ -140,8 +199,8 @@
                 </div>
             </div>
 
-            <!-- 30-Second Executive Command Brief Panel -->
-            <div class="glass-panel p-4 mb-4 border-start border-4 border-warning">
+            <!-- ADMIN ONLY: 30-Second Executive Command Brief Panel -->
+            <div id="executiveBriefCard" class="glass-panel p-4 mb-4 border-start border-4 border-warning admin-only-field">
                 <div class="d-flex justify-content-between align-items-center mb-3">
                     <h5 class="text-warning fw-bold mb-0 d-flex align-items-center gap-2">
                         <i class="bi bi-briefcase-fill text-warning"></i> 30-Second Executive Command Brief
@@ -176,6 +235,19 @@
                 </div>
             </div>
 
+            <!-- PUBLIC ONLY: Surface Featured Public Safety Advisory Banner -->
+            <div id="publicAdvisoryBanner" class="glass-panel p-4 mb-4 border-start border-4 border-success public-only-field">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <h5 class="text-success fw-bold mb-0 d-flex align-items-center gap-2">
+                        <i class="bi bi-shield-exclamation text-success fs-4"></i> Public Safety Emergency Advisory
+                    </h5>
+                    <span class="badge bg-success text-white font-mono fw-bold fs-7">Official Guidance</span>
+                </div>
+                <p id="publicAdvisoryText" class="text-white lead fs-6 fw-semibold mb-0">
+                    Loading public safety guidance...
+                </p>
+            </div>
+
             <!-- Main Telemetry Grid -->
             <div class="row g-4 mb-4">
                 
@@ -192,8 +264,8 @@
                         </p>
                     </div>
 
-                    <!-- Collapsible AI Decision Intelligence Panel -->
-                    <div class="glass-panel p-4 mb-4 border-start border-4 border-cyan">
+                    <!-- ADMIN ONLY: Collapsible AI Decision Intelligence Panel -->
+                    <div id="aiDecisionCard" class="glass-panel p-4 mb-4 border-start border-4 border-cyan admin-only-field">
                         <div class="d-flex justify-content-between align-items-center">
                             <h5 class="text-cyan fw-bold mb-0 d-flex align-items-center gap-2">
                                 <i class="bi bi-cpu-fill text-cyan"></i> AI Decision Intelligence & Severity Reasoning
@@ -240,8 +312,8 @@
                         </div>
                     </div>
 
-                    <!-- Collapsible AI Consensus Engine Panel -->
-                    <div class="glass-panel p-4 mb-4 border-start border-4 border-warning">
+                    <!-- ADMIN ONLY: Collapsible AI Consensus Engine Panel -->
+                    <div id="aiConsensusCard" class="glass-panel p-4 mb-4 border-start border-4 border-warning admin-only-field">
                         <div class="d-flex justify-content-between align-items-center">
                             <h5 class="text-warning fw-bold mb-0 d-flex align-items-center gap-2">
                                 <i class="bi bi-people-fill text-warning"></i> AI Consensus Engine (5 Specialized Agents)
@@ -254,7 +326,7 @@
                         <div class="collapse show mt-3" id="consensusPanel">
                             <!-- 5 Specialized Agent Cards Grid -->
                             <div id="consensusAgentsGrid" class="row g-2 mb-3">
-                                <!-- Populated dynamically via JS with sequential animation -->
+                                <!-- Populated dynamically via JS -->
                             </div>
 
                             <!-- Consensus Summary & Metrics Box -->
@@ -281,13 +353,13 @@
                         </div>
                     </div>
 
-                    <!-- Leaflet Tactical Map -->
+                    <!-- Leaflet Tactical / Affected Area Map -->
                     <div class="glass-panel p-4 mb-4">
                         <div class="d-flex justify-content-between align-items-center mb-3">
                             <h5 class="text-warning fw-bold mb-0 d-flex align-items-center gap-2">
-                                <i class="bi bi-geo-alt-fill text-danger"></i> Tactical Impact Map
+                                <i class="bi bi-geo-alt-fill text-danger"></i> <span id="mapHeaderTitle">Tactical Impact Map</span>
                             </h5>
-                            <small class="text-white font-mono fw-bold"><i class="bi bi-map-fill text-cyan me-1"></i> Leaflet.js / CartoDB Dark</small>
+                            <small class="text-white font-mono fw-bold"><i class="bi bi-map-fill text-cyan me-1"></i> Leaflet.js / CartoDB & Satellite</small>
                         </div>
                         <div class="map-wrapper">
                             <div id="mapContainer"></div>
@@ -297,7 +369,7 @@
                     <!-- Affected Locations Selector -->
                     <div class="glass-panel p-4 mb-4">
                         <h5 class="text-warning fw-bold mb-2 d-flex align-items-center justify-content-between">
-                            <span><i class="bi bi-pin-map-fill text-danger me-2"></i> Impacted Operational Sectors</span>
+                            <span><i class="bi bi-pin-map-fill text-danger me-2"></i> Impacted Sectors & Locations</span>
                             <small class="text-white font-mono fs-7 fw-bold">Click sector to fly map</small>
                         </h5>
                         <div id="locationsList">
@@ -316,11 +388,11 @@
                     </div>
                 </div>
 
-                <!-- Right Column: Predictive Card, Weather, Hotlines, Resources, Advisories & Verification -->
+                <!-- Right Column: Weather, Hotlines, Resources, Advisories & Sources -->
                 <div class="col-lg-5">
                     
-                    <!-- Predictive Risk Assessment Card -->
-                    <div class="glass-panel p-4 mb-4 border-start border-4 border-warning">
+                    <!-- ADMIN ONLY: Predictive Risk Assessment Card -->
+                    <div id="predictiveIntelligenceCard" class="glass-panel p-4 mb-4 border-start border-4 border-warning admin-only-field">
                         <div class="d-flex justify-content-between align-items-center mb-3">
                             <h5 class="text-warning fw-bold mb-0 d-flex align-items-center gap-2">
                                 <i class="bi bi-graph-up-arrow text-warning"></i> Predictive Intelligence
@@ -393,10 +465,10 @@
                         </div>
                     </div>
 
-                    <!-- Recommended Rescue Resources with Reasoning -->
+                    <!-- Recommended Rescue Resources -->
                     <div class="glass-panel p-4 mb-4">
                         <h5 class="text-warning fw-bold mb-3 d-flex align-items-center gap-2">
-                            <i class="bi bi-box-seam-fill text-info"></i> Recommended Rescue Assets & Reasoning
+                            <i class="bi bi-box-seam-fill text-info"></i> Recommended Rescue Resources
                         </h5>
                         <div id="resourcesList">
                             <!-- Populated via JS -->
@@ -418,8 +490,8 @@
                         </div>
                     </div>
 
-                    <!-- Incident Timeline -->
-                    <div class="glass-panel p-4 mb-4">
+                    <!-- ADMIN ONLY: Incident Timeline -->
+                    <div id="incidentTimelineCard" class="glass-panel p-4 mb-4 admin-only-field">
                         <h5 class="text-warning fw-bold mb-3 d-flex align-items-center gap-2">
                             <i class="bi bi-clock-history text-info"></i> Incident Operational Timeline
                         </h5>
@@ -434,7 +506,7 @@
                             <i class="bi bi-journal-check text-success"></i> Intelligence Source Verification
                         </h5>
                         
-                        <div id="sourceVerificationBox" class="p-3 bg-dark rounded border border-success mb-3 font-mono fs-7">
+                        <div id="sourceVerificationBox" class="p-3 bg-dark rounded border border-success mb-3 font-mono fs-7 admin-only-field">
                             <div class="mb-1 text-white"><i class="bi bi-check-circle-fill text-success me-1"></i> <strong id="verifyGov">Government Advisories: Verified</strong></div>
                             <div class="mb-1 text-white"><i class="bi bi-check-circle-fill text-success me-1"></i> <strong id="verifyWeather">Weather Radar: Active</strong></div>
                             <div class="mb-1 text-white"><i class="bi bi-check-circle-fill text-success me-1"></i> <strong id="verifyNews">News Streams: Verified</strong></div>
@@ -455,7 +527,8 @@
 
     </div>
 
-    <!-- FLOATING AI EMERGENCY OPERATIONS COPILOT -->
+    <!-- ADMIN ONLY: FLOATING AI EMERGENCY OPERATIONS COPILOT -->
+    {% if role == 'admin' %}
     <button id="copilotToggleBtn" class="copilot-floating-btn" title="Open AI EOC Copilot">
         <i class="bi bi-robot text-warning fs-5"></i>
         <span>AI Copilot</span>
@@ -479,7 +552,7 @@
         <!-- Chat History Area -->
         <div id="copilotMessages" class="copilot-body">
             <div class="copilot-msg msg-ai">
-                <div>Hello! I am your AI Emergency Operations Copilot. Ask me any question about the current disaster telemetry, severity classification, hospitals, or rescue recommendations.</div>
+                <div>Hello Commander! I am your AI Emergency Operations Copilot. Ask me any question about the current disaster telemetry, severity classification, hospitals, or rescue recommendations.</div>
                 <div class="copilot-msg-meta">[SYSTEM ONLINE]</div>
             </div>
         </div>
@@ -504,6 +577,7 @@
             </button>
         </div>
     </div>
+    {% endif %}
 
     <!-- Footer -->
     <footer class="mt-5 py-4 border-top border-danger bg-dark text-center">
@@ -579,4 +653,3 @@
     <script src="{{ url_for('static', filename='js/app.js') }}"></script>
 </body>
 </html>
-
