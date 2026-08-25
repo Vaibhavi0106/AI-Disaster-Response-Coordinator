@@ -18,56 +18,55 @@
 
     <!-- Navigation Bar -->
     <nav class="navbar navbar-expand-lg navbar-eoc sticky-top">
-        <div class="container-fluid px-4">
-            <a class="navbar-brand d-flex align-items-center gap-3" href="/">
+        <div class="container-fluid px-3 px-md-4">
+            <a class="navbar-brand d-flex align-items-center gap-2 gap-md-3" href="/">
                 <i class="bi bi-shield-radar text-warning fs-2"></i>
                 <div>
                     <span class="brand-badge">AI DISASTER RESPONSE</span>
-                    <div class="text-uppercase font-mono text-warning fs-7 fw-bold">Emergency Operations Command Center</div>
+                    <div class="text-uppercase font-mono text-warning fs-7 fw-bold d-none d-sm-block">Emergency Operations Command Center</div>
                 </div>
             </a>
             
-            <div class="d-flex align-items-center gap-2 flex-wrap">
-                <!-- Logged In User / Role Profile Badge -->
-                <div class="d-flex align-items-center gap-2 font-mono fs-7">
-                    {% if user %}
-                        <div class="bg-dark px-3 py-1 rounded border border-secondary text-white d-flex align-items-center gap-2">
-                            <i class="bi bi-person-circle text-warning"></i>
-                            <span>{{ user.name }}</span>
-                            <span class="badge {% if user.role == 'admin' %}bg-danger{% else %}bg-info{% endif %} text-white text-uppercase font-mono fs-8 ms-1">
-                                {{ user.role }}
-                            </span>
-                        </div>
-                        {% if user.role == 'admin' %}
-                            <button id="adminBroadcastBtn" class="btn btn-outline-warning font-mono fs-7 fw-bold px-2 py-1" data-bs-toggle="modal" data-bs-target="#adminBroadcastModal">
-                                <i class="bi bi-megaphone-fill me-1"></i> Broadcast Alert
-                            </button>
-                        {% endif %}
-                        <a href="/logout" class="btn btn-sm btn-outline-secondary font-mono text-white p-1 px-2 text-decoration-none">Logout</a>
-                    {% else %}
-                        <a href="/login" class="btn btn-outline-warning font-mono fs-7 fw-bold px-3 py-1">
-                            <i class="bi bi-person-badge-fill me-1"></i> Demo Login / Roles
-                        </a>
-                    {% endif %}
+            <div class="d-flex align-items-center gap-2">
+                <!-- EOC Live Telemetry Badge -->
+                <div class="d-none d-md-flex align-items-center gap-2 px-3 py-1 rounded-pill bg-dark border border-warning font-mono fs-7 me-1">
+                    <span class="spinner-grow spinner-grow-sm text-success" role="status"></span>
+                    <span class="text-warning fw-bold">EOC LIVE TELEMETRY: ACTIVE</span>
                 </div>
 
-                <!-- First Aid Guide Button -->
-                <button id="firstAidBtn" class="btn btn-outline-info font-mono fw-bold px-3 py-2 border border-info d-flex align-items-center gap-1" data-bs-toggle="modal" data-bs-target="#firstAidModal">
-                    <i class="bi bi-bandaid-fill text-info fs-6"></i>
-                    <span>🩹 First Aid</span>
-                </button>
+                <!-- Admin Broadcast Alert Icon Button (Admin Only) -->
+                {% if user and user.role == 'admin' %}
+                    <button id="adminBroadcastBtn" class="btn btn-outline-warning p-2 font-mono fs-6 text-nowrap rounded-circle shadow-sm me-1" title="Broadcast Alert" data-bs-toggle="modal" data-bs-target="#adminBroadcastModal" style="width: 42px; height: 42px; display: inline-flex; align-items: center; justify-content: center;">
+                        <i class="bi bi-megaphone-fill text-warning"></i>
+                    </button>
+                {% endif %}
 
-                <!-- Mark Myself Safe Button -->
-                <button id="markSafeBtn" class="btn btn-success font-mono fw-bold px-3 py-2 border border-light d-flex align-items-center gap-1" data-bs-toggle="modal" data-bs-target="#markSafeModal">
-                    <i class="bi bi-check-circle-fill text-white fs-6"></i>
-                    <span>✅ I'm Safe</span>
-                </button>
-
-                <!-- Public Emergency SOS Button -->
-                <button id="sosBtn" class="btn btn-danger font-mono fw-bold px-3 py-2 border border-warning d-flex align-items-center gap-2 btn-sos-pulse" data-bs-toggle="modal" data-bs-target="#sosModal">
-                    <i class="bi bi-exclamation-triangle-fill text-warning fs-5"></i>
-                    <span>🚨 SEND SOS</span>
-                </button>
+                <!-- User Profile / Identity Dropdown -->
+                {% if user %}
+                    <div class="dropdown">
+                        <button class="btn btn-dark border border-secondary dropdown-toggle d-flex align-items-center gap-2 px-3 py-1 font-mono fs-7 text-white" type="button" id="userProfileDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                            <i class="bi bi-person-circle text-warning fs-6"></i>
+                            <span class="fw-bold d-none d-sm-inline">{{ user.name }}</span>
+                            <span class="badge {% if user.role == 'admin' %}bg-danger{% else %}bg-info text-dark{% endif %} font-mono fs-8 text-uppercase ms-1">
+                                {{ user.role }}
+                            </span>
+                        </button>
+                        <ul class="dropdown-menu dropdown-menu-dark dropdown-menu-end shadow-lg font-mono fs-7 border-secondary" aria-labelledby="userProfileDropdown">
+                            <li class="px-3 py-2 border-bottom border-secondary text-secondary fs-8">
+                                Signed in as <strong class="text-white d-block">{{ user.email }}</strong>
+                            </li>
+                            <li>
+                                <a class="dropdown-item text-danger d-flex align-items-center gap-2 py-2" href="/logout">
+                                    <i class="bi bi-box-arrow-right"></i> Log Out
+                                </a>
+                            </li>
+                        </ul>
+                    </div>
+                {% else %}
+                    <a href="/login" class="btn btn-outline-warning font-mono fs-7 fw-bold px-3 py-2">
+                        <i class="bi bi-person-badge-fill me-1"></i> Demo Login / Roles
+                    </a>
+                {% endif %}
             </div>
         </div>
     </nav>
@@ -810,6 +809,40 @@
             </div>
         </div>
     </div>
+    {% endif %}
+
+    <!-- FLOATING ACTION BUTTONS (ROLE-SCOPED) -->
+
+    <!-- 1. Bottom-Left: Emergency Speed-Dial FAB (Field Users & Public ONLY — NEVER Admin) -->
+    {% if not (user and user.role == 'admin') %}
+    <div id="emergencyFabCluster" class="emergency-fab-cluster">
+        <div class="emergency-fab-options">
+            <button id="sosBtn" class="btn btn-danger font-mono fw-bold px-3 py-2 border border-warning shadow-lg d-flex align-items-center gap-2 btn-sos-pulse text-white" data-bs-toggle="modal" data-bs-target="#sosModal">
+                <i class="bi bi-exclamation-triangle-fill text-warning fs-5"></i>
+                <span>🚨 Send SOS</span>
+            </button>
+            <button id="markSafeBtn" class="btn btn-success font-mono fw-bold px-3 py-2 border border-light shadow-lg d-flex align-items-center gap-2 text-white" data-bs-toggle="modal" data-bs-target="#markSafeModal">
+                <i class="bi bi-check-circle-fill text-white fs-5"></i>
+                <span>✅ I'm Safe</span>
+            </button>
+        </div>
+        <button id="emergencyFabTrigger" class="btn btn-danger rounded-circle p-0 shadow-lg d-flex align-items-center justify-content-center btn-sos-pulse" style="width: 58px; height: 58px;" title="Emergency Safety Options">
+            <span class="fs-4">🆘</span>
+        </button>
+    </div>
+    {% endif %}
+
+    <!-- 2. Bottom-Center: Floating First Aid Guide Button (Everyone — Admin & Field User/Public) -->
+    <button id="firstAidFab" class="btn btn-dark border border-info text-info font-mono fw-bold px-3 py-2 rounded-pill shadow-lg d-flex align-items-center gap-2 position-fixed bottom-0 start-50 translate-middle-x mb-4" style="z-index: 1040; background: rgba(15, 23, 42, 0.95); backdrop-filter: blur(8px);" data-bs-toggle="modal" data-bs-target="#firstAidModal">
+        <i class="bi bi-bandaid-fill text-info fs-5"></i>
+        <span>🩹 First Aid Guide</span>
+    </button>
+
+    <!-- 3. Bottom-Right: Floating AI Copilot Trigger (Admin Only) -->
+    {% if user and user.role == 'admin' %}
+    <button id="copilotToggleBtn" class="btn btn-warning rounded-circle shadow-lg p-0 position-fixed bottom-0 end-0 me-4 mb-4 d-flex align-items-center justify-content-center" style="width: 58px; height: 58px; z-index: 1040;" title="AI EOC Copilot">
+        <i class="bi bi-robot fs-3 text-dark"></i>
+    </button>
     {% endif %}
 
     <!-- Scripts -->

@@ -85,6 +85,9 @@ function initEventListeners() {
     // Initialize Emergency SOS Handler
     initEmergencySos();
 
+    // Initialize Emergency Speed-Dial FAB Cluster
+    initEmergencyFab();
+
     // Initialize GDACS Nearby Detection Handler
     initNearbyDetection();
 
@@ -1691,5 +1694,26 @@ async function retractAlert(alertId) {
         }
     } catch (e) {
         console.error('Error retracting alert:', e);
+    }
+}
+
+/**
+ * Feature: Emergency Speed-Dial FAB Cluster Handler (Bottom-Left)
+ */
+function initEmergencyFab() {
+    const trigger = document.getElementById('emergencyFabTrigger');
+    const cluster = document.getElementById('emergencyFabCluster');
+
+    if (trigger && cluster) {
+        trigger.addEventListener('click', (e) => {
+            e.stopPropagation();
+            cluster.classList.toggle('open');
+        });
+
+        document.addEventListener('click', (e) => {
+            if (!cluster.contains(e.target)) {
+                cluster.classList.remove('open');
+            }
+        });
     }
 }
