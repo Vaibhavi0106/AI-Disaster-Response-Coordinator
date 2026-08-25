@@ -48,5 +48,10 @@ class SearchAgent:
                 "mode": "live_tavily"
             }
         except Exception as e:
-            logger.error(f"Tavily Search Execution Failed: {str(e)}")
-            raise RuntimeError(f"Tavily Search API failed: {str(e)}")
+            logger.warning(f"Tavily Search Execution Failed: {str(e)}. Returning fallback context.")
+            return {
+                "query": query,
+                "search_context": f"Live emergency disaster query: '{query}'. Ground truth location reports requested.",
+                "sources": [],
+                "mode": "fallback"
+            }

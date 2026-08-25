@@ -252,14 +252,28 @@ def parse_disaster_json(raw_response: str) -> dict:
             {"resource": "Helicopter Air-drop Supplies", "reason": f"Delivering emergency kits to isolated suburban sectors of {loc_name.title()}."}
         ]
 
-    # 9. Ensure Shelters
+    # 9. Ensure Shelters carry latitude and longitude coordinates
     shelters = result.get("evacuation_shelters", [])
     if not isinstance(shelters, list) or len(shelters) == 0:
-        result["evacuation_shelters"] = [
+        shelters = [
             {"name": f"{loc_name.title()} Central Emergency Shelter", "capacity": "2,000 Persons", "status": "Open - Receiving Evacuees"},
             {"name": f"{loc_name.title()} District Sports Complex Camp", "capacity": "3,500 Persons", "status": "Open - High Capacity"},
             {"name": f"{loc_name.title()} Transit Relief Hub", "capacity": "1,200 Persons", "status": "Open"}
         ]
+
+    base_coords = geocode_location(loc_name)
+    base_lat, base_lng = base_coords.get("lat", 20.5937), base_coords.get("lng", 78.9629)
+
+    for idx, s in enumerate(shelters):
+        if not isinstance(s, dict):
+            continue
+        if not s.get("latitude") or not s.get("longitude"):
+            s["latitude"] = round(base_lat + (0.008 * (idx + 1)), 4)
+            s["longitude"] = round(base_lng + (0.006 * (idx + 1)), 4)
+        s["lat"] = s["latitude"]
+        s["lng"] = s["longitude"]
+
+    result["evacuation_shelters"] = shelters
 
     # 10. Ensure Hotlines
     contacts = result.get("emergency_contacts", [])

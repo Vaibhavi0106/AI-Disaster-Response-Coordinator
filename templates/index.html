@@ -14,24 +14,59 @@
     <!-- Custom High-Contrast EOC CSS -->
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 </head>
-<body>
+<body data-user-role="{{ role }}">
 
     <!-- Navigation Bar -->
     <nav class="navbar navbar-expand-lg navbar-eoc sticky-top">
-        <div class="container-fluid px-4">
-            <a class="navbar-brand d-flex align-items-center gap-3" href="/">
+        <div class="container-fluid px-3 px-md-4">
+            <a class="navbar-brand d-flex align-items-center gap-2 gap-md-3" href="/">
                 <i class="bi bi-shield-radar text-warning fs-2"></i>
                 <div>
                     <span class="brand-badge">AI DISASTER RESPONSE</span>
-                    <div class="text-uppercase font-mono text-warning fs-7 fw-bold">Emergency Operations Command Center</div>
+                    <div class="text-uppercase font-mono text-warning fs-7 fw-bold d-none d-sm-block">Emergency Operations Command Center</div>
                 </div>
             </a>
             
-            <div class="d-flex align-items-center gap-3 ms-auto">
-                <div class="d-none d-md-flex align-items-center gap-2 px-3 py-1 rounded-pill bg-dark border border-warning font-mono fs-7">
-                    <span class="pulse-radar"></span>
+            <div class="d-flex align-items-center gap-2">
+                <!-- EOC Live Telemetry Badge -->
+                <div class="d-none d-md-flex align-items-center gap-2 px-3 py-1 rounded-pill bg-dark border border-warning font-mono fs-7 me-1">
+                    <span class="spinner-grow spinner-grow-sm text-success" role="status"></span>
                     <span class="text-warning fw-bold">EOC LIVE TELEMETRY: ACTIVE</span>
                 </div>
+
+                <!-- Admin Broadcast Alert Icon Button (Admin Only) -->
+                {% if user and user.role == 'admin' %}
+                    <button id="adminBroadcastBtn" class="btn btn-outline-warning p-2 font-mono fs-6 text-nowrap rounded-circle shadow-sm me-1" title="Broadcast Alert" data-bs-toggle="modal" data-bs-target="#adminBroadcastModal" style="width: 42px; height: 42px; display: inline-flex; align-items: center; justify-content: center;">
+                        <i class="bi bi-megaphone-fill text-warning"></i>
+                    </button>
+                {% endif %}
+
+                <!-- User Profile / Identity Dropdown -->
+                {% if user %}
+                    <div class="dropdown">
+                        <button class="btn btn-dark border border-secondary dropdown-toggle d-flex align-items-center gap-2 px-3 py-1 font-mono fs-7 text-white" type="button" id="userProfileDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                            <i class="bi bi-person-circle text-warning fs-6"></i>
+                            <span class="fw-bold d-none d-sm-inline">{{ user.name }}</span>
+                            <span class="badge {% if user.role == 'admin' %}bg-danger{% else %}bg-info text-dark{% endif %} font-mono fs-8 text-uppercase ms-1">
+                                {{ user.role }}
+                            </span>
+                        </button>
+                        <ul class="dropdown-menu dropdown-menu-dark dropdown-menu-end shadow-lg font-mono fs-7 border-secondary" aria-labelledby="userProfileDropdown">
+                            <li class="px-3 py-2 border-bottom border-secondary text-secondary fs-8">
+                                Signed in as <strong class="text-white d-block">{{ user.email }}</strong>
+                            </li>
+                            <li>
+                                <a class="dropdown-item text-danger d-flex align-items-center gap-2 py-2" href="/logout">
+                                    <i class="bi bi-box-arrow-right"></i> Log Out
+                                </a>
+                            </li>
+                        </ul>
+                    </div>
+                {% else %}
+                    <a href="/login" class="btn btn-outline-warning font-mono fs-7 fw-bold px-3 py-2">
+                        <i class="bi bi-person-badge-fill me-1"></i> Demo Login / Roles
+                    </a>
+                {% endif %}
             </div>
         </div>
     </nav>
@@ -51,17 +86,26 @@
 
             <!-- Search Bar -->
             <div class="search-box-container mb-3">
-                <div class="search-input-group glass-panel p-2">
-                    <i class="bi bi-search search-icon-inside"></i>
-                    <input type="text" id="disasterQuery" class="search-input" placeholder="Type ANY query: e.g. Flood in Mumbai, Landslide in Wayanad, Earthquake in Tokyo, Wildfire in Sydney..." autocomplete="off">
-                    <button id="searchBtn" class="btn-analyze ms-2">
-                        <i class="bi bi-lightning-charge-fill me-1"></i> Analyze Crisis
-                    </button>
+                <div class="search-input-wrapper glass-panel p-2 d-flex flex-column flex-lg-row align-items-stretch align-items-lg-center gap-2">
+                    <div class="search-field-container flex-grow-1">
+                        <i class="bi bi-search search-icon-inside"></i>
+                        <input type="text" id="disasterQuery" class="search-input" placeholder="Type ANY query: e.g. Flood in Mumbai, Landslide in Wayanad, Earthquake in Tokyo..." autocomplete="off">
+                    </div>
+                    <div class="d-flex align-items-center gap-2">
+                        <button id="searchBtn" class="btn-analyze text-nowrap">
+                            <i class="bi bi-lightning-charge-fill me-1"></i> Analyze Crisis
+                        </button>
+                        <button id="detectNearbyBtn" class="btn-detect-nearby text-nowrap">
+                            <i class="bi bi-geo-alt-fill text-danger me-1"></i> Detect Near Me
+                        </button>
+                    </div>
                 </div>
+                <!-- Status Message Box for Location-Based GDACS Search -->
+                <div id="nearbyStatusBox" class="mt-2 text-center font-mono fs-7 d-none"></div>
             </div>
 
             <!-- Global Quick Pills -->
-            <div class="d-flex justify-content-center flex-wrap align-items-center gap-2 mb-4">
+            <div id="globalExamplesRow" class="d-flex justify-content-center flex-wrap align-items-center gap-2 mb-4">
                 <small class="text-warning fw-bold font-mono me-2 fs-6">Global Examples:</small>
                 <span class="sample-pill" data-query="Flood in Mumbai"><i class="bi bi-water text-cyan"></i> Flood in Mumbai</span>
                 <span class="sample-pill" data-query="Landslide in Wayanad"><i class="bi bi-mountains text-warning"></i> Landslide in Wayanad</span>
@@ -88,17 +132,55 @@
         <!-- Dashboard Results Section -->
         <div id="dashboardResults">
             
+            <!-- ADMIN ONLY: SOS Alert Command Log Panel -->
+            <div id="adminSosLogPanel" class="glass-panel p-4 mb-4 border-start border-4 border-danger {% if role != 'admin' %}d-none{% endif %}">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h5 class="text-danger fw-bold mb-0 d-flex align-items-center gap-2">
+                        <i class="bi bi-exclamation-octagon-fill text-danger fs-4"></i> Emergency SOS Command Log
+                    </h5>
+                    <div class="d-flex align-items-center gap-2 font-mono fs-7 text-warning">
+                        <span class="spinner-grow spinner-grow-sm text-danger" role="status"></span>
+                        <span>Live Monitoring (Polling 15s)</span>
+                    </div>
+                </div>
+                
+                <div class="table-responsive">
+                    <table class="table table-dark table-hover align-middle mb-0 font-mono fs-7 border-secondary">
+                        <thead class="table-secondary text-white">
+                            <tr>
+                                <th scope="col"># ID</th>
+                                <th scope="col">Logged At</th>
+                                <th scope="col">Person & Phone</th>
+                                <th scope="col">Emergency Contact</th>
+                                <th scope="col">Location & GPS</th>
+                                <th scope="col">Delivery Status</th>
+                                <th scope="col">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="sosLogTableBody">
+                            <tr>
+                                <td colspan="7" class="text-center py-4 text-warning">
+                                    <i class="bi bi-inbox fs-3 d-block mb-1"></i>
+                                    No emergency SOS alerts logged yet.
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
             <!-- EOC Top Action Banner -->
             <div class="glass-panel p-4 mb-4 d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 border-start border-4 border-danger">
                 <div>
                     <div class="d-flex align-items-center flex-wrap gap-3 mb-2">
                         <h2 id="disasterType" class="mb-0 text-white fw-bold">Emergency Incident</h2>
                         <span id="severityBadge" class="badge-severity badge-critical">Critical</span>
-                        <span id="priorityBadge" class="badge-priority">P1 - High Priority</span>
+                        <span id="priorityBadge" class="badge-priority admin-only-field">P1 - High Priority</span>
+                        <span id="gdacsBadge" class="d-none"></span>
                     </div>
                     <p class="text-warning mb-0 font-mono fs-7 fw-bold"><i class="bi bi-shield-check me-1"></i> Live Emergency Command Briefing | Operational Dispatch Active</p>
                 </div>
-                <div class="d-flex align-items-center gap-2">
+                <div class="d-flex align-items-center gap-2 admin-only-field">
                     <button id="exportJsonBtn" class="btn btn-outline-warning font-mono fw-bold text-white">
                         <i class="bi bi-download me-1"></i> Export JSON
                     </button>
@@ -108,7 +190,7 @@
                 </div>
             </div>
 
-            <!-- Key Metrics Bar (4 Stat Cards) -->
+            <!-- Key Metrics Bar -->
             <div class="row g-3 mb-4">
                 <div class="col-md-3 col-6">
                     <div class="metric-box">
@@ -116,13 +198,13 @@
                         <div id="metricRadius" class="metric-value font-mono">20 - 35 km</div>
                     </div>
                 </div>
-                <div class="col-md-3 col-6">
+                <div class="col-md-3 col-6 admin-only-field">
                     <div class="metric-box">
                         <div class="metric-label"><i class="bi bi-exclamation-triangle me-1"></i> Risk Level Index</div>
                         <div id="metricRisk" class="metric-value font-mono text-danger">9.2 / 10</div>
                     </div>
                 </div>
-                <div class="col-md-3 col-6">
+                <div class="col-md-3 col-6 admin-only-field">
                     <div class="metric-box">
                         <div class="metric-label"><i class="bi bi-box-seam me-1"></i> Required Rescue Assets</div>
                         <div id="metricTeams" class="metric-value font-mono text-warning">5 Key Squads</div>
@@ -136,8 +218,8 @@
                 </div>
             </div>
 
-            <!-- 30-Second Executive Command Brief Panel -->
-            <div class="glass-panel p-4 mb-4 border-start border-4 border-warning">
+            <!-- ADMIN ONLY: 30-Second Executive Command Brief Panel -->
+            <div id="executiveBriefCard" class="glass-panel p-4 mb-4 border-start border-4 border-warning admin-only-field">
                 <div class="d-flex justify-content-between align-items-center mb-3">
                     <h5 class="text-warning fw-bold mb-0 d-flex align-items-center gap-2">
                         <i class="bi bi-briefcase-fill text-warning"></i> 30-Second Executive Command Brief
@@ -172,6 +254,19 @@
                 </div>
             </div>
 
+            <!-- PUBLIC ONLY: Surface Featured Public Safety Advisory Banner -->
+            <div id="publicAdvisoryBanner" class="glass-panel p-4 mb-4 border-start border-4 border-success public-only-field">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <h5 class="text-success fw-bold mb-0 d-flex align-items-center gap-2">
+                        <i class="bi bi-shield-exclamation text-success fs-4"></i> Public Safety Emergency Advisory
+                    </h5>
+                    <span class="badge bg-success text-white font-mono fw-bold fs-7">Official Guidance</span>
+                </div>
+                <p id="publicAdvisoryText" class="text-white lead fs-6 fw-semibold mb-0">
+                    Loading public safety guidance...
+                </p>
+            </div>
+
             <!-- Main Telemetry Grid -->
             <div class="row g-4 mb-4">
                 
@@ -188,8 +283,8 @@
                         </p>
                     </div>
 
-                    <!-- Collapsible AI Decision Intelligence Panel -->
-                    <div class="glass-panel p-4 mb-4 border-start border-4 border-cyan">
+                    <!-- ADMIN ONLY: Collapsible AI Decision Intelligence Panel -->
+                    <div id="aiDecisionCard" class="glass-panel p-4 mb-4 border-start border-4 border-cyan admin-only-field">
                         <div class="d-flex justify-content-between align-items-center">
                             <h5 class="text-cyan fw-bold mb-0 d-flex align-items-center gap-2">
                                 <i class="bi bi-cpu-fill text-cyan"></i> AI Decision Intelligence & Severity Reasoning
@@ -236,8 +331,8 @@
                         </div>
                     </div>
 
-                    <!-- Collapsible AI Consensus Engine Panel -->
-                    <div class="glass-panel p-4 mb-4 border-start border-4 border-warning">
+                    <!-- ADMIN ONLY: Collapsible AI Consensus Engine Panel -->
+                    <div id="aiConsensusCard" class="glass-panel p-4 mb-4 border-start border-4 border-warning admin-only-field">
                         <div class="d-flex justify-content-between align-items-center">
                             <h5 class="text-warning fw-bold mb-0 d-flex align-items-center gap-2">
                                 <i class="bi bi-people-fill text-warning"></i> AI Consensus Engine (5 Specialized Agents)
@@ -250,7 +345,7 @@
                         <div class="collapse show mt-3" id="consensusPanel">
                             <!-- 5 Specialized Agent Cards Grid -->
                             <div id="consensusAgentsGrid" class="row g-2 mb-3">
-                                <!-- Populated dynamically via JS with sequential animation -->
+                                <!-- Populated dynamically via JS -->
                             </div>
 
                             <!-- Consensus Summary & Metrics Box -->
@@ -277,13 +372,13 @@
                         </div>
                     </div>
 
-                    <!-- Leaflet Tactical Map -->
+                    <!-- Leaflet Tactical / Affected Area Map -->
                     <div class="glass-panel p-4 mb-4">
                         <div class="d-flex justify-content-between align-items-center mb-3">
                             <h5 class="text-warning fw-bold mb-0 d-flex align-items-center gap-2">
-                                <i class="bi bi-geo-alt-fill text-danger"></i> Tactical Impact Map
+                                <i class="bi bi-geo-alt-fill text-danger"></i> <span id="mapHeaderTitle">Tactical Impact Map</span>
                             </h5>
-                            <small class="text-white font-mono fw-bold"><i class="bi bi-map-fill text-cyan me-1"></i> Leaflet.js / CartoDB Dark</small>
+                            <small class="text-white font-mono fw-bold"><i class="bi bi-map-fill text-cyan me-1"></i> Leaflet.js / CartoDB & Satellite</small>
                         </div>
                         <div class="map-wrapper">
                             <div id="mapContainer"></div>
@@ -293,7 +388,7 @@
                     <!-- Affected Locations Selector -->
                     <div class="glass-panel p-4 mb-4">
                         <h5 class="text-warning fw-bold mb-2 d-flex align-items-center justify-content-between">
-                            <span><i class="bi bi-pin-map-fill text-danger me-2"></i> Impacted Operational Sectors</span>
+                            <span><i class="bi bi-pin-map-fill text-danger me-2"></i> Impacted Sectors & Locations</span>
                             <small class="text-white font-mono fs-7 fw-bold">Click sector to fly map</small>
                         </h5>
                         <div id="locationsList">
@@ -312,11 +407,11 @@
                     </div>
                 </div>
 
-                <!-- Right Column: Predictive Card, Weather, Hotlines, Resources, Advisories & Verification -->
+                <!-- Right Column: Weather, Hotlines, Resources, Advisories & Sources -->
                 <div class="col-lg-5">
                     
-                    <!-- Predictive Risk Assessment Card -->
-                    <div class="glass-panel p-4 mb-4 border-start border-4 border-warning">
+                    <!-- ADMIN ONLY: Predictive Risk Assessment Card -->
+                    <div id="predictiveIntelligenceCard" class="glass-panel p-4 mb-4 border-start border-4 border-warning admin-only-field">
                         <div class="d-flex justify-content-between align-items-center mb-3">
                             <h5 class="text-warning fw-bold mb-0 d-flex align-items-center gap-2">
                                 <i class="bi bi-graph-up-arrow text-warning"></i> Predictive Intelligence
@@ -389,10 +484,10 @@
                         </div>
                     </div>
 
-                    <!-- Recommended Rescue Resources with Reasoning -->
+                    <!-- Recommended Rescue Resources -->
                     <div class="glass-panel p-4 mb-4">
                         <h5 class="text-warning fw-bold mb-3 d-flex align-items-center gap-2">
-                            <i class="bi bi-box-seam-fill text-info"></i> Recommended Rescue Assets & Reasoning
+                            <i class="bi bi-box-seam-fill text-info"></i> Recommended Rescue Resources
                         </h5>
                         <div id="resourcesList">
                             <!-- Populated via JS -->
@@ -414,8 +509,8 @@
                         </div>
                     </div>
 
-                    <!-- Incident Timeline -->
-                    <div class="glass-panel p-4 mb-4">
+                    <!-- ADMIN ONLY: Incident Timeline -->
+                    <div id="incidentTimelineCard" class="glass-panel p-4 mb-4 admin-only-field">
                         <h5 class="text-warning fw-bold mb-3 d-flex align-items-center gap-2">
                             <i class="bi bi-clock-history text-info"></i> Incident Operational Timeline
                         </h5>
@@ -430,7 +525,7 @@
                             <i class="bi bi-journal-check text-success"></i> Intelligence Source Verification
                         </h5>
                         
-                        <div id="sourceVerificationBox" class="p-3 bg-dark rounded border border-success mb-3 font-mono fs-7">
+                        <div id="sourceVerificationBox" class="p-3 bg-dark rounded border border-success mb-3 font-mono fs-7 admin-only-field">
                             <div class="mb-1 text-white"><i class="bi bi-check-circle-fill text-success me-1"></i> <strong id="verifyGov">Government Advisories: Verified</strong></div>
                             <div class="mb-1 text-white"><i class="bi bi-check-circle-fill text-success me-1"></i> <strong id="verifyWeather">Weather Radar: Active</strong></div>
                             <div class="mb-1 text-white"><i class="bi bi-check-circle-fill text-success me-1"></i> <strong id="verifyNews">News Streams: Verified</strong></div>
@@ -451,7 +546,8 @@
 
     </div>
 
-    <!-- FLOATING AI EMERGENCY OPERATIONS COPILOT -->
+    <!-- ADMIN ONLY: FLOATING AI EMERGENCY OPERATIONS COPILOT -->
+    {% if role == 'admin' %}
     <button id="copilotToggleBtn" class="copilot-floating-btn" title="Open AI EOC Copilot">
         <i class="bi bi-robot text-warning fs-5"></i>
         <span>AI Copilot</span>
@@ -475,7 +571,7 @@
         <!-- Chat History Area -->
         <div id="copilotMessages" class="copilot-body">
             <div class="copilot-msg msg-ai">
-                <div>Hello! I am your AI Emergency Operations Copilot. Ask me any question about the current disaster telemetry, severity classification, hospitals, or rescue recommendations.</div>
+                <div>Hello Commander! I am your AI Emergency Operations Copilot. Ask me any question about the current disaster telemetry, severity classification, hospitals, or rescue recommendations.</div>
                 <div class="copilot-msg-meta">[SYSTEM ONLINE]</div>
             </div>
         </div>
@@ -500,6 +596,7 @@
             </button>
         </div>
     </div>
+    {% endif %}
 
     <!-- Footer -->
     <footer class="mt-5 py-4 border-top border-danger bg-dark text-center">
@@ -509,9 +606,347 @@
         </div>
     </footer>
 
+    <!-- EMERGENCY SOS CONFIRMATION & DISPATCH MODAL -->
+    <div class="modal fade" id="sosModal" tabindex="-1" aria-labelledby="sosModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content glass-panel border-danger text-white">
+                <div class="modal-header border-secondary bg-danger bg-opacity-25">
+                    <h5 class="modal-title font-mono fw-bold text-white d-flex align-items-center gap-2" id="sosModalLabel">
+                        <i class="bi bi-exclamation-triangle-fill text-warning fs-4"></i> EMERGENCY SOS DISPATCH
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body p-4">
+                    <p class="fs-6 fw-bold text-warning mb-1">Are you sure you want to send an emergency SOS?</p>
+                    <p class="fs-7 text-white mb-3">
+                        Your real device location and registered emergency-contact details will be transmitted for immediate emergency dispatch.
+                    </p>
+
+                    <!-- Emergency Contact Details Form (Stored in localStorage) -->
+                    <div class="p-3 bg-dark rounded border border-secondary mb-3 font-mono fs-7">
+                        <strong class="text-warning d-block mb-2"><i class="bi bi-person-lines-fill me-1"></i> REGISTERED EMERGENCY CONTACT DETAILS</strong>
+                        <div class="row g-2">
+                            <div class="col-6">
+                                <label class="text-white fs-8">Your Full Name:</label>
+                                <input type="text" id="sosUserName" class="form-control form-control-sm bg-dark text-white border-secondary" placeholder="e.g. Alex Rivera">
+                            </div>
+                            <div class="col-6">
+                                <label class="text-white fs-8">Your Phone Number:</label>
+                                <input type="tel" id="sosUserPhone" class="form-control form-control-sm bg-dark text-white border-secondary" placeholder="e.g. +1 555-0199">
+                            </div>
+                            <div class="col-6">
+                                <label class="text-white fs-8">Emergency Contact Name:</label>
+                                <input type="text" id="sosContactName" class="form-control form-control-sm bg-dark text-white border-secondary" placeholder="e.g. Sarah Rivera">
+                            </div>
+                            <div class="col-6">
+                                <label class="text-white fs-8">Emergency Contact Phone:</label>
+                                <input type="tel" id="sosContactPhone" class="form-control form-control-sm bg-dark text-white border-secondary" placeholder="e.g. +1 555-0122">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Progress & Status Display Box -->
+                    <div id="sosStatusBox" class="p-3 rounded border font-mono fs-7 mb-3 d-none">
+                        <div id="sosStatusText" class="fw-bold mb-1"></div>
+                        <div id="sosStatusDetails" class="fs-8"></div>
+                        <div id="sosMapLinkContainer" class="mt-2 d-none">
+                            <a id="sosMapLink" href="#" target="_blank" class="btn btn-sm btn-outline-warning text-white fw-bold font-mono">
+                                <i class="bi bi-geo-alt-fill text-danger me-1"></i> Open Location on Google Maps
+                            </a>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer border-secondary">
+                    <button type="button" class="btn btn-secondary font-mono fw-bold" data-bs-dismiss="modal">CANCEL</button>
+                    <button type="button" id="confirmSosBtn" class="btn btn-danger font-mono fw-bold px-4">
+                        <i class="bi bi-send-fill me-1"></i> SEND SOS
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MARK MYSELF SAFE MODAL -->
+    <div class="modal fade" id="markSafeModal" tabindex="-1" aria-labelledby="markSafeModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content glass-panel border-success text-white">
+                <div class="modal-header border-secondary bg-success bg-opacity-25">
+                    <h5 class="modal-title font-mono fw-bold text-white d-flex align-items-center gap-2" id="markSafeModalLabel">
+                        <i class="bi bi-shield-check text-success fs-4"></i> SAFETY CHECK-IN ("I'M SAFE")
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body p-4">
+                    <p class="fs-6 fw-bold text-success mb-1">Confirm Safety Status</p>
+                    <p class="fs-7 text-white mb-3">
+                        This sends a reassurance message to your emergency contact. No emergency team dispatch is triggered.
+                    </p>
+
+                    <div class="p-3 bg-dark rounded border border-secondary mb-3 font-mono fs-7">
+                        <strong class="text-success d-block mb-2"><i class="bi bi-person-check-fill me-1"></i> REASSURANCE CHECK-IN DETAILS</strong>
+                        <div class="row g-2">
+                            <div class="col-6">
+                                <label class="text-white fs-8">Your Name:</label>
+                                <input type="text" id="safeUserName" class="form-control form-control-sm bg-dark text-white border-secondary">
+                            </div>
+                            <div class="col-6">
+                                <label class="text-white fs-8">Emergency Contact Name:</label>
+                                <input type="text" id="safeContactName" class="form-control form-control-sm bg-dark text-white border-secondary">
+                            </div>
+                            <div class="col-12">
+                                <label class="text-white fs-8">Emergency Contact Phone:</label>
+                                <input type="tel" id="safeContactPhone" class="form-control form-control-sm bg-dark text-white border-secondary">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="markSafeStatusBox" class="p-3 rounded border font-mono fs-7 mb-3 d-none">
+                        <div id="markSafeStatusText" class="fw-bold mb-1"></div>
+                        <div id="markSafeStatusDetails" class="fs-8"></div>
+                    </div>
+                </div>
+                <div class="modal-footer border-secondary">
+                    <button type="button" class="btn btn-secondary font-mono fw-bold" data-bs-dismiss="modal">CANCEL</button>
+                    <button type="button" id="confirmMarkSafeBtn" class="btn btn-success font-mono fw-bold px-4">
+                        <i class="bi bi-check-circle-fill me-1"></i> MARK MYSELF SAFE
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- OFFLINE FIRST-AID & SURVIVAL GUIDE MODAL -->
+    <div class="modal fade" id="firstAidModal" tabindex="-1" aria-labelledby="firstAidModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-lg">
+            <div class="modal-content glass-panel border-info text-white">
+                <div class="modal-header border-secondary bg-info bg-opacity-25">
+                    <h5 class="modal-title font-mono fw-bold text-white d-flex align-items-center gap-2" id="firstAidModalLabel">
+                        <i class="bi bi-bandaid-fill text-info fs-4"></i> OFFLINE FIRST-AID & SURVIVAL GUIDE
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body p-4">
+                    <p class="fs-7 text-info font-mono mb-3"><i class="bi bi-wifi-off me-1"></i> 100% Offline Guide — Red Cross & WHO Standard Emergency Instructions</p>
+                    
+                    <!-- Tabs -->
+                    <ul class="nav nav-pills mb-3 font-mono fs-7 gap-2" id="firstAidTabs" role="tablist">
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link active bg-dark text-white border border-secondary" id="tab-categories" data-bs-toggle="tab" data-bs-target="#pane-categories" type="button" role="tab">
+                                <i class="bi bi-list-task me-1"></i> Medical Procedures
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link bg-dark text-white border border-secondary" id="tab-disasters" data-bs-toggle="tab" data-bs-target="#pane-disasters" type="button" role="tab">
+                                <i class="bi bi-shield-exclamation me-1"></i> Survival by Disaster Type
+                            </button>
+                        </li>
+                    </ul>
+
+                    <div class="tab-content" id="firstAidTabContent">
+                        <!-- Tab 1: Categories & Steps -->
+                        <div class="tab-pane fade show active" id="pane-categories" role="tabpanel">
+                            <div class="row g-2 mb-3" id="firstAidCategoryButtons"></div>
+                            <div id="firstAidStepsContainer" class="p-3 bg-dark rounded border border-secondary">
+                                <h6 class="text-warning font-mono fw-bold mb-2" id="firstAidSelectedTitle">Select a topic above</h6>
+                                <ol class="text-white font-mono fs-7 mb-0 ps-3" id="firstAidSelectedSteps"></ol>
+                            </div>
+                        </div>
+
+                        <!-- Tab 2: Survival by Disaster Type -->
+                        <div class="tab-pane fade" id="pane-disasters" role="tabpanel">
+                            <div id="firstAidDisasterTips" class="d-flex flex-column gap-3 font-mono fs-7"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer border-secondary">
+                    <button type="button" class="btn btn-secondary font-mono fw-bold" data-bs-dismiss="modal">CLOSE</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ADMIN BROADCAST ALERT MODAL -->
+    {% if user and user.role == 'admin' %}
+    <div class="modal fade" id="adminBroadcastModal" tabindex="-1" aria-labelledby="adminBroadcastModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content glass-panel border-warning text-white">
+                <div class="modal-header border-secondary bg-warning bg-opacity-25">
+                    <h5 class="modal-title font-mono fw-bold text-white d-flex align-items-center gap-2" id="adminBroadcastModalLabel">
+                        <i class="bi bi-megaphone-fill text-warning fs-4"></i> ADMIN ALERT BROADCAST
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body p-4 font-mono">
+                    <p class="fs-7 text-warning mb-3">Broadcast urgent emergency warnings fixed at the top of all user dashboards.</p>
+                    
+                    <div class="mb-3">
+                        <label class="form-label text-white fs-7 fw-bold">Alert Message Body:</label>
+                        <textarea id="broadcastMsgInput" class="form-control bg-dark text-white border-secondary fs-7" rows="3" placeholder="e.g. EVACUATION NOTICE: High water levels detected near Sector 4 causeway. Move to Central Shelter immediately."></textarea>
+                    </div>
+
+                    <div class="row g-2 mb-3">
+                        <div class="col-6">
+                            <label class="form-label text-white fs-7 fw-bold">Severity:</label>
+                            <select id="broadcastSeveritySelect" class="form-select form-select-sm bg-dark text-white border-secondary">
+                                <option value="critical">Critical (Red Pulsing)</option>
+                                <option value="warning" selected>Warning (Amber)</option>
+                                <option value="info">Info (Cyan)</option>
+                            </select>
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label text-white fs-7 fw-bold">Expires In (Minutes):</label>
+                            <input type="number" id="broadcastExpiresInput" class="form-control form-control-sm bg-dark text-white border-secondary" value="60">
+                        </div>
+                    </div>
+
+                    <button type="button" id="submitBroadcastBtn" class="btn btn-warning w-100 font-mono fw-bold mb-4">
+                        <i class="bi bi-broadcast me-1"></i> BROADCAST ALERT TO ALL USERS
+                    </button>
+
+                    <h6 class="text-warning fw-bold border-bottom border-secondary pb-1">Active Broadcasts:</h6>
+                    <div id="adminActiveAlertsList" class="d-flex flex-column gap-2 fs-7"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- FLOATING ACTION BUTTONS (ROLE-SCOPED) -->
+
+    <!-- 1. Bottom-Left: Emergency Speed-Dial FAB (Field Users & Public ONLY — NEVER Admin) -->
+    {% if not (user and user.role == 'admin') %}
+    <div id="emergencyFabCluster" class="emergency-fab-cluster">
+        <div class="emergency-fab-options">
+            <button id="sosBtn" class="btn btn-danger font-mono fw-bold px-3 py-2 border border-warning shadow-lg d-flex align-items-center gap-2 btn-sos-pulse text-white" data-bs-toggle="modal" data-bs-target="#sosModal">
+                <i class="bi bi-exclamation-triangle-fill text-warning fs-5"></i>
+                <span>🚨 Send SOS</span>
+            </button>
+            <button id="markSafeBtn" class="btn btn-success font-mono fw-bold px-3 py-2 border border-light shadow-lg d-flex align-items-center gap-2 text-white" data-bs-toggle="modal" data-bs-target="#markSafeModal">
+                <i class="bi bi-check-circle-fill text-white fs-5"></i>
+                <span>✅ I'm Safe</span>
+            </button>
+        </div>
+        <button id="emergencyFabTrigger" class="btn btn-danger rounded-circle p-0 shadow-lg d-flex align-items-center justify-content-center btn-sos-pulse" style="width: 58px; height: 58px;" title="Emergency Safety Options">
+            <span class="fs-4">🆘</span>
+        </button>
+    </div>
+    {% endif %}
+
+    <!-- 2. Bottom-Center: Floating First Aid Guide Button (Field Users & Public ONLY — NEVER Admin) -->
+    {% if not (user and user.role == 'admin') %}
+    <button id="firstAidFab" class="btn btn-dark border border-info text-info font-mono fw-bold px-3 py-2 rounded-pill shadow-lg d-flex align-items-center gap-2 position-fixed bottom-0 start-50 translate-middle-x mb-4" style="z-index: 1040; background: rgba(15, 23, 42, 0.95); backdrop-filter: blur(8px);" data-bs-toggle="modal" data-bs-target="#firstAidModal">
+        <i class="bi bi-bandaid-fill text-info fs-5"></i>
+        <span>🩹 First Aid Guide</span>
+    </button>
+    {% endif %}
+
+    <!-- 3. Bottom-Right: FLOATING OFFLINE AI SURVIVAL ASSISTANT (Field Users & Public ONLY — NEVER Admin) -->
+    {% if not (user and user.role == 'admin') %}
+    <button id="offlineBotToggleBtn" class="offline-bot-floating-btn" title="Open Offline AI Survival Assistant">
+        <i class="bi bi-robot text-info fs-5"></i>
+        <span>🤖 Offline AI</span>
+    </button>
+
+    <div id="offlineBotPanel" class="offline-bot-panel">
+        <!-- Header -->
+        <div class="offline-bot-header">
+            <div class="d-flex align-items-center gap-2">
+                <i class="bi bi-robot text-info fs-5"></i>
+                <div>
+                    <strong class="text-white font-mono fs-7 d-block">OFFLINE AI ASSISTANT</strong>
+                    <small class="text-info font-mono fs-8">In-Browser Grounded Inference</small>
+                </div>
+            </div>
+            <div class="d-flex align-items-center gap-2">
+                <div id="modelStatusBadgeContainer">
+                    <span id="modelStatusBadge" class="badge bg-secondary font-mono fs-8">Not Cached</span>
+                </div>
+                <button id="toggleDownloadBoxBtn" class="btn btn-sm text-secondary p-0 border-0 fs-6" title="Model Download Settings">
+                    <i class="bi bi-gear-fill"></i>
+                </button>
+                <button id="offlineBotCloseBtn" class="btn btn-sm text-white fs-5 p-0 border-0 ms-1" title="Close Panel">
+                    <i class="bi bi-x-lg"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- Download Pre-cache Section (Auto-collapsed when model is cached) -->
+        <div id="modelDownloadBox" class="p-3 border-bottom border-secondary bg-dark font-mono fs-8">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <span class="text-white fw-bold"><i class="bi bi-cloud-download text-info me-1"></i> Offline AI Model (~250MB)</span>
+                <span class="text-secondary fs-8">Qwen2.5-0.5B ONNX</span>
+            </div>
+            <p class="text-secondary fs-8 mb-2">
+                Pre-download while connected to enable conversational AI offline without network access.
+            </p>
+            <button id="prepareOfflineModelBtn" class="btn btn-sm btn-outline-info font-mono fw-bold w-100 py-1">
+                <i class="bi bi-download me-1"></i> Pre-Download AI Model
+            </button>
+            <!-- Progress Bar -->
+            <div id="modelProgressContainer" class="mt-2 d-none">
+                <div class="progress bg-dark border border-secondary" style="height: 12px;">
+                    <div id="modelProgressBar" class="progress-bar progress-bar-striped progress-bar-animated bg-info font-mono fs-8" style="width: 0%;"></div>
+                </div>
+                <div id="modelProgressText" class="fs-8 text-info font-mono text-center mt-1">Initializing download...</div>
+            </div>
+        </div>
+
+        <!-- Chat History Area -->
+        <div id="offlineChatMessages" class="offline-bot-body font-mono fs-7">
+            <div class="offline-bot-msg msg-ai p-2 rounded bg-secondary bg-opacity-25 text-white border border-secondary">
+                <strong class="text-info d-block fs-8"><i class="bi bi-robot me-1"></i> Emergency AI Assistant:</strong>
+                Hello! Ask me any medical or first-aid question. I will provide grounded answers from verified Red Cross / WHO procedures.
+                <div class="mt-1 text-warning fs-8 border-top border-secondary pt-1">
+                    ⚠️ Offline assistant — for a real emergency, use SOS or call the hotlines above.
+                </div>
+            </div>
+        </div>
+
+        <!-- Suggested Prompt Chips Row -->
+        <div class="offline-bot-chips-row" id="offlineBotChipsRow">
+            <span class="offline-bot-chip" data-question="How to stop severe bleeding?">Severe Bleeding</span>
+            <span class="offline-bot-chip" data-question="How to perform CPR?">CPR Steps</span>
+            <span class="offline-bot-chip" data-question="How to treat a burn?">Burn Treatment</span>
+            <span class="offline-bot-chip" data-question="How to handle a fracture?">Fracture First-Aid</span>
+            <span class="offline-bot-chip" data-question="What to do during a flood?">Flood Survival</span>
+            <span class="offline-bot-chip" data-question="Earthquake survival tips">Earthquake Safety</span>
+        </div>
+
+        <!-- Footer Input Form -->
+        <div class="offline-bot-footer">
+            <input type="text" id="offlineChatInput" class="offline-bot-input font-mono fs-7" placeholder="Ask a first-aid question..." autocomplete="off">
+            <button id="offlineChatSendBtn" class="offline-bot-send-btn">
+                <i class="bi bi-send-fill"></i>
+            </button>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- 4. Bottom-Right: Floating AI Copilot Trigger (Admin Only) -->
+    {% if user and user.role == 'admin' %}
+    <button id="copilotToggleBtn" class="btn btn-warning rounded-circle shadow-lg p-0 position-fixed bottom-0 end-0 me-4 mb-4 d-flex align-items-center justify-content-center" style="width: 58px; height: 58px; z-index: 1040;" title="AI EOC Copilot">
+        <i class="bi bi-robot fs-3 text-dark"></i>
+    </button>
+    {% endif %}
+
     <!-- Scripts -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <!-- Transformers.js (CDN Module) -->
+    <script type="module">
+        import { pipeline, TextStreamer } from 'https://cdn.jsdelivr.net/npm/@huggingface/transformers@latest';
+        window.__transformersPipeline = pipeline;
+        window.__transformersStreamer = TextStreamer;
+    </script>
+    <script src="{{ url_for('static', filename='js/firstaid_data.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/offline_bot.js') }}"></script>
     <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/static/js/sw.js').catch(err => console.warn('SW registration error:', err));
+            });
+        }
+    </script>
 </body>
 </html>
