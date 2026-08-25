@@ -77,13 +77,22 @@
 
             <!-- Search Bar -->
             <div class="search-box-container mb-3">
-                <div class="search-input-group glass-panel p-2">
-                    <i class="bi bi-search search-icon-inside"></i>
-                    <input type="text" id="disasterQuery" class="search-input" placeholder="Type ANY query: e.g. Flood in Mumbai, Landslide in Wayanad, Earthquake in Tokyo, Wildfire in Sydney..." autocomplete="off">
-                    <button id="searchBtn" class="btn-analyze ms-2">
-                        <i class="bi bi-lightning-charge-fill me-1"></i> Analyze Crisis
-                    </button>
+                <div class="search-input-group glass-panel p-2 flex-column flex-md-row gap-2">
+                    <div class="d-flex align-items-center flex-grow-1 px-2">
+                        <i class="bi bi-search search-icon-inside me-2"></i>
+                        <input type="text" id="disasterQuery" class="search-input w-100" placeholder="Type ANY query: e.g. Flood in Mumbai, Landslide in Wayanad, Earthquake in Tokyo, Wildfire in Sydney..." autocomplete="off">
+                    </div>
+                    <div class="d-flex gap-2 flex-wrap">
+                        <button id="searchBtn" class="btn-analyze text-nowrap">
+                            <i class="bi bi-lightning-charge-fill me-1"></i> Analyze Crisis
+                        </button>
+                        <button id="detectNearbyBtn" class="btn btn-outline-warning font-mono fw-bold text-nowrap px-3 py-2 d-flex align-items-center gap-1">
+                            <i class="bi bi-geo-alt-fill text-danger fs-6"></i> 📍 Detect Disasters Near Me
+                        </button>
+                    </div>
                 </div>
+                <!-- Status Message Box for Location-Based GDACS Search -->
+                <div id="nearbyStatusBox" class="mt-2 text-center font-mono fs-7 d-none"></div>
             </div>
 
             <!-- Global Quick Pills -->
@@ -158,6 +167,7 @@
                         <h2 id="disasterType" class="mb-0 text-white fw-bold">Emergency Incident</h2>
                         <span id="severityBadge" class="badge-severity badge-critical">Critical</span>
                         <span id="priorityBadge" class="badge-priority admin-only-field">P1 - High Priority</span>
+                        <span id="gdacsBadge" class="d-none"></span>
                     </div>
                     <p class="text-warning mb-0 font-mono fs-7 fw-bold"><i class="bi bi-shield-check me-1"></i> Live Emergency Command Briefing | Operational Dispatch Active</p>
                 </div>

@@ -8,6 +8,7 @@ from agents.disaster_agent import DisasterAgent
 from agents.report_agent import ReportAgent
 from auth_store import authenticate
 from sos_store import log_sos_event, list_sos_log, mark_sos_reviewed
+from gdacs_client import find_nearby_disasters
 
 # Configure Logging
 logging.basicConfig(
@@ -162,6 +163,90 @@ def analyze_disaster():
         return jsonify({
             "status": "error",
             "message": f"An unexpected error occurred during processing: {str(e)}"
+        }), 500
+
+
+@app.route("/api/nearby-disaster", methods=["POST"])
+def nearby_disaster():
+    """
+    Location-triggered disaster search via GDACS global disaster monitor.
+    Receives JSON body: {"latitude": ..., "longitude": ...}
+    Queries GDACS for active events within 500 km.
+    If events found, feeds query to live analysis pipeline and decorates response with GDACS metadata.
+    """
+    try:
+        data = request.get_json(silent=True) or {}
+        lat = data.get("latitude")
+        lon = data.get("longitude")
+
+        if lat is None or lon is None:
+            return jsonify({
+                "status": "error",
+                "message": "Location coordinates (latitude and longitude) are required."
+            }), 400
+
+        try:
+            lat_float = float(lat)
+            lon_float = float(lon)
+        except (ValueError, TypeError):
+            return jsonify({
+                "status": "error",
+                "message": "Invalid latitude or longitude numeric values."
+            }), 400
+
+        # Query GDACS API
+        try:
+            nearby = find_nearby_disasters(lat_float, lon_float, radius_km=500.0)
+        except Exception as g_err:
+            logger.error(f"GDACS lookup error: {g_err}")
+            return jsonify({
+                "status": "error",
+                "message": "Could not reach the global disaster monitor right now — try typing your location manually."
+            }), 503
+
+        if not nearby:
+            return jsonify({
+                "status": "none_found",
+                "message": "No active disasters detected near your location (within 500 km) per GDACS global monitoring. You can still search manually above."
+            }), 200
+
+        top = nearby[0]
+        # Build query for live analysis pipeline
+        location_label = top.get("country") or top.get("event_name") or "nearby location"
+        query = f"{top['event_type']} near {location_label}"
+        
+        logger.info(f"📍 GDACS Nearby Event Detected: {query} ({top['distance_km']} km away)")
+        
+        # Execute live analysis pipeline
+        result_json = disaster_agent.analyze_disaster(query)
+        
+        # Attach GDACS verification metadata
+        result_json["gdacs_verified"] = True
+        result_json["gdacs_alert_level"] = top["alert_level"]
+        result_json["gdacs_distance_km"] = top["distance_km"]
+        result_json["gdacs_source_url"] = f"https://www.gdacs.org/report.aspx?eventid={top['eventid']}&eventtype={top['event_type_code']}"
+
+        # Apply role-based filtering
+        current_user = session.get("user")
+        user_role = current_user.get("role", "regular") if current_user else "regular"
+        filtered_json = filter_for_role(result_json, user_role)
+
+        return jsonify({
+            "status": "success",
+            "query": query,
+            "role": user_role,
+            "gdacs_verified": True,
+            "gdacs_alert_level": top["alert_level"],
+            "gdacs_distance_km": top["distance_km"],
+            "gdacs_source_url": result_json["gdacs_source_url"],
+            "data": filtered_json
+        }), 200
+
+    except Exception as e:
+        logger.error(f"Error in /api/nearby-disaster: {e}", exc_info=True)
+        return jsonify({
+            "status": "error",
+            "message": f"Nearby disaster analysis failed: {str(e)}"
         }), 500
 
 

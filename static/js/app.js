@@ -78,6 +78,9 @@ function initEventListeners() {
     // Initialize Emergency SOS Handler
     initEmergencySos();
 
+    // Initialize GDACS Nearby Detection Handler
+    initNearbyDetection();
+
     // AI Copilot Interactions (Admin Only)
     if (copilotToggleBtn) {
         copilotToggleBtn.addEventListener('click', () => {
@@ -228,6 +231,22 @@ function renderDashboard(data) {
         severityBadge.classList.add('badge-medium');
     } else {
         severityBadge.classList.add('badge-low');
+    }
+
+    // Render GDACS Verified Badge if present
+    const gdacsBadge = document.getElementById('gdacsBadge');
+    if (gdacsBadge) {
+        if (data.gdacs_verified) {
+            const alertLvl = data.gdacs_alert_level || 'Alert';
+            const distKm = data.gdacs_distance_km || '0';
+            const srcUrl = data.gdacs_source_url || 'https://www.gdacs.org';
+            
+            gdacsBadge.className = 'badge bg-danger text-white border border-warning font-mono py-2 px-3 fs-7 shadow-sm d-inline-flex align-items-center gap-1';
+            gdacsBadge.innerHTML = `<a href="${srcUrl}" target="_blank" rel="noopener noreferrer" class="text-white text-decoration-none d-inline-flex align-items-center gap-1"><i class="bi bi-broadcast text-warning me-1"></i> 🛰️ GDACS Verified · Alert Level: ${alertLvl} · ${distKm} km away <i class="bi bi-box-arrow-up-right ms-1 fs-8"></i></a>`;
+        } else {
+            gdacsBadge.className = 'd-none';
+            gdacsBadge.innerHTML = '';
+        }
     }
 
     // 3. Priority Badge & Metric Boxes
@@ -1133,4 +1152,103 @@ function plotSosMarkersOnMap(logs) {
             sosMarkers.push(sosMarker);
         }
     });
+}
+
+/**
+ * Location-triggered GDACS Nearby Disaster Detection Handler
+ */
+function initNearbyDetection() {
+    const detectBtn = document.getElementById('detectNearbyBtn');
+    if (!detectBtn) return;
+
+    detectBtn.addEventListener('click', () => {
+        if (!navigator.geolocation) {
+            showNearbyStatus('error', 'Your browser does not support native Geolocation API.');
+            return;
+        }
+
+        showNearbyStatus('loading', 'Requesting location access...');
+        detectBtn.disabled = true;
+
+        navigator.geolocation.getCurrentPosition(
+            async (pos) => {
+                const { latitude, longitude } = pos.coords;
+                showNearbyStatus('loading', 'Checking GDACS global disaster monitor...');
+                
+                try {
+                    const res = await fetch('/api/nearby-disaster', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ latitude, longitude }),
+                    });
+                    
+                    if (!res.ok) {
+                        const errData = await res.json().catch(() => ({}));
+                        throw new Error(errData.message || `Server returned HTTP ${res.status}`);
+                    }
+                    
+                    const data = await res.json();
+                    handleNearbyResult(data);
+                } catch (err) {
+                    console.error('Nearby disaster lookup error:', err);
+                    showNearbyStatus('error', 'Could not reach the global disaster monitor right now — try typing your location manually.');
+                } finally {
+                    detectBtn.disabled = false;
+                }
+            },
+            (err) => {
+                detectBtn.disabled = false;
+                console.warn('Geolocation access error:', err);
+                showNearbyStatus('error', 'Location access denied or unavailable. You can still type a location above.');
+            },
+            { enableHighAccuracy: true, timeout: 12000, maximumAge: 0 }
+        );
+    });
+}
+
+function showNearbyStatus(type, message) {
+    const box = document.getElementById('nearbyStatusBox');
+    if (!box) return;
+
+    box.classList.remove('d-none', 'text-warning', 'text-danger', 'text-info', 'text-success');
+
+    if (type === 'loading') {
+        box.className = 'mt-2 text-center font-mono fs-7 text-warning';
+        box.innerHTML = `<i class="bi bi-arrow-repeat spin me-1"></i> ${escapeHtml(message)}`;
+    } else if (type === 'error') {
+        box.className = 'mt-2 text-center font-mono fs-7 text-danger fw-bold';
+        box.innerHTML = `<i class="bi bi-exclamation-triangle-fill me-1"></i> ${escapeHtml(message)}`;
+    } else if (type === 'info') {
+        box.className = 'mt-2 text-center font-mono fs-7 text-info fw-bold';
+        box.innerHTML = `<i class="bi bi-info-circle-fill me-1"></i> ${escapeHtml(message)}`;
+    } else if (type === 'success') {
+        box.className = 'mt-2 text-center font-mono fs-7 text-success fw-bold';
+        box.innerHTML = `<i class="bi bi-check-circle-fill me-1"></i> ${escapeHtml(message)}`;
+    }
+}
+
+function handleNearbyResult(data) {
+    if (data.status === 'none_found') {
+        showNearbyStatus('info', data.message || 'No active disasters detected near your location (within 500 km) per GDACS global monitoring. You can still search manually above.');
+        return; // DO NOT render false sample dashboard
+    }
+
+    if (data.status === 'error') {
+        showNearbyStatus('error', data.message || 'Location lookup failed.');
+        return;
+    }
+
+    const distKm = data.gdacs_distance_km || (data.data && data.data.gdacs_distance_km) || '0';
+    showNearbyStatus('success', `🛰️ GDACS-verified event detected — ${distKm} km away`);
+
+    if (data.data) {
+        if (data.gdacs_verified) data.data.gdacs_verified = true;
+        if (data.gdacs_alert_level) data.data.gdacs_alert_level = data.gdacs_alert_level;
+        if (data.gdacs_distance_km) data.data.gdacs_distance_km = data.gdacs_distance_km;
+        if (data.gdacs_source_url) data.data.gdacs_source_url = data.gdacs_source_url;
+
+        currentAnalysisData = data.data;
+        sessionStorage.setItem('currentDisasterReport', JSON.stringify(currentAnalysisData));
+        renderDashboard(currentAnalysisData);
+    }
 }
