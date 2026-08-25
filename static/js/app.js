@@ -1219,6 +1219,11 @@ function initNearbyDetection() {
         originalExamplesHtml = examplesRow.innerHTML;
     }
 
+    const useLocPill = document.getElementById('useCurrentLocationPill');
+    if (useLocPill && detectBtn) {
+        useLocPill.addEventListener('click', () => detectBtn.click());
+    }
+
     if (!detectBtn) return;
 
     detectBtn.addEventListener('click', () => {
@@ -1315,6 +1320,9 @@ function handleNearbyLookupResult(data) {
             <i class="bi bi-broadcast text-danger me-1"></i> ${escapeHtml(data.query)}
             <span class="badge ${alertBadgeClass} font-mono fs-8 ms-1" title="Verified by GDACS · Alert: ${escapeHtml(data.alert_level)}">🛰️ GDACS</span>
         </span>
+        <button id="useCurrentLocationPill" class="btn btn-outline-warning font-mono fs-7 fw-bold px-3 py-1 rounded-pill ms-2 d-inline-flex align-items-center gap-1" type="button">
+            <i class="bi bi-geo-alt-fill text-danger me-1"></i> 📍 Use current location
+        </button>
         <button id="resetToExamplesBtn" class="btn btn-link text-warning font-mono fs-7 p-0 ms-2 text-decoration-none" type="button">↺ Show generic examples</button>
     `;
 
@@ -1328,6 +1336,12 @@ function handleNearbyLookupResult(data) {
         });
     }
 
+    const detectBtn = document.getElementById('detectNearbyBtn');
+    const useLocPill = document.getElementById('useCurrentLocationPill');
+    if (useLocPill && detectBtn) {
+        useLocPill.addEventListener('click', () => detectBtn.click());
+    }
+
     const resetBtn = document.getElementById('resetToExamplesBtn');
     if (resetBtn) {
         resetBtn.addEventListener('click', restoreOriginalExamplePills);
@@ -1338,6 +1352,12 @@ function restoreOriginalExamplePills() {
     const examplesRow = document.getElementById('globalExamplesRow');
     if (examplesRow && originalExamplesHtml) {
         examplesRow.innerHTML = originalExamplesHtml;
+
+        const detectBtn = document.getElementById('detectNearbyBtn');
+        const useLocPill = document.getElementById('useCurrentLocationPill');
+        if (useLocPill && detectBtn) {
+            useLocPill.addEventListener('click', () => detectBtn.click());
+        }
 
         const samplePills = examplesRow.querySelectorAll('.sample-pill');
         const queryInput = document.getElementById('disasterQuery');
