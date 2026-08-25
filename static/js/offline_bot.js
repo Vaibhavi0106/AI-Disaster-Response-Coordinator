@@ -144,6 +144,8 @@ function initOfflineBotUI() {
 
     const toggleBtn = document.getElementById('offlineBotToggleBtn');
     const closeBtn = document.getElementById('offlineBotCloseBtn');
+    const toggleBoxBtn = document.getElementById('toggleDownloadBoxBtn');
+    const downloadBox = document.getElementById('modelDownloadBox');
     const panel = document.getElementById('offlineBotPanel');
     const chips = document.querySelectorAll('.offline-bot-chip');
 
@@ -160,12 +162,19 @@ function initOfflineBotUI() {
         });
     }
 
+    if (toggleBoxBtn && downloadBox) {
+        toggleBoxBtn.addEventListener('click', () => {
+            downloadBox.classList.toggle('d-none');
+        });
+    }
+
     // Update status badge on page load
     updateBotStatusBadge();
 
     if (prepareBtn) {
         prepareBtn.addEventListener('click', async () => {
             prepareBtn.disabled = true;
+            if (downloadBox) downloadBox.classList.remove('d-none');
             if (progressContainer) progressContainer.classList.remove('d-none');
             if (progressText) progressText.textContent = 'Connecting to Hugging Face CDN...';
 
@@ -180,9 +189,12 @@ function initOfflineBotUI() {
                     }
                 });
 
-                if (progressText) progressText.textContent = '✅ Model cached successfully for offline use!';
+                if (progressText) progressText.textContent = '✅ Model cached successfully!';
                 if (progressBar) progressBar.className = 'progress-bar bg-success';
-                updateBotStatusBadge();
+                
+                setTimeout(() => {
+                    updateBotStatusBadge();
+                }, 1200);
             } catch (err) {
                 console.error('Offline model download error:', err);
                 if (progressText) progressText.textContent = `⚠️ Download failed: ${err.message || 'Network error'}`;
@@ -235,13 +247,16 @@ function initOfflineBotUI() {
 function updateBotStatusBadge() {
     const badgeContainer = document.getElementById('modelStatusBadgeContainer');
     const prepareBtn = document.getElementById('prepareOfflineModelBtn');
+    const downloadBox = document.getElementById('modelDownloadBox');
     if (!badgeContainer) return;
 
     if (localStorage.getItem('offline_assistant_ready') === 'true') {
-        badgeContainer.innerHTML = '<span class="badge bg-success font-mono fs-8"><i class="bi bi-check-circle-fill me-1"></i> Offline Assistant Ready</span>';
-        if (prepareBtn) prepareBtn.textContent = '🔄 Re-download / Update Model (~250MB)';
+        badgeContainer.innerHTML = '<span class="badge bg-success font-mono fs-8"><i class="bi bi-check-circle-fill me-1"></i> Ready</span>';
+        if (prepareBtn) prepareBtn.innerHTML = '<i class="bi bi-arrow-repeat me-1"></i> Re-download / Update Model (~250MB)';
+        if (downloadBox) downloadBox.classList.add('d-none'); // Auto-collapse to declutter chat panel!
     } else {
-        badgeContainer.innerHTML = '<span class="badge bg-secondary font-mono fs-8">Not Downloaded (Keyword Search Only)</span>';
+        badgeContainer.innerHTML = '<span class="badge bg-warning text-dark font-mono fs-8"><i class="bi bi-cloud-arrow-down me-1"></i> Not Cached</span>';
+        if (downloadBox) downloadBox.classList.remove('d-none');
     }
 }
 
