@@ -126,6 +126,9 @@ def report():
     return render_template("report.html")
 
 
+GDACS_LOOKUPS = {}
+
+
 @app.route("/api/analyze", methods=["POST"])
 def analyze_disaster():
     """
@@ -150,6 +153,14 @@ def analyze_disaster():
         if "evacuation_shelters" in result_json and isinstance(result_json["evacuation_shelters"], list):
             result_json["evacuation_shelters"] = apply_shelter_overrides(result_json["evacuation_shelters"])
 
+        # Attach GDACS verification metadata if query originated from GDACS lookup
+        if query in GDACS_LOOKUPS:
+            gd_info = GDACS_LOOKUPS[query]
+            result_json["gdacs_verified"] = gd_info["gdacs_verified"]
+            result_json["gdacs_alert_level"] = gd_info["gdacs_alert_level"]
+            result_json["gdacs_distance_km"] = gd_info["gdacs_distance_km"]
+            result_json["gdacs_source_url"] = gd_info["gdacs_source_url"]
+
         # Apply role-based field filtering before sending to client
         current_user = session.get("user")
         user_role = current_user.get("role", "regular") if current_user else "regular"
@@ -167,6 +178,78 @@ def analyze_disaster():
         return jsonify({
             "status": "error",
             "message": f"An unexpected error occurred during processing: {str(e)}"
+        }), 500
+
+
+@app.route("/api/nearby-disaster/lookup", methods=["POST"])
+def nearby_disaster_lookup():
+    """
+    Cheap GDACS-only check. Does NOT call Tavily/LangChain.
+    Returns nearest active GDACS disaster event within 500 km and the query string to use.
+    """
+    try:
+        data = request.get_json(silent=True) or {}
+        lat = data.get("latitude")
+        lon = data.get("longitude")
+
+        if lat is None or lon is None:
+            return jsonify({
+                "status": "error",
+                "message": "Location coordinates (latitude and longitude) are required."
+            }), 400
+
+        try:
+            lat_float = float(lat)
+            lon_float = float(lon)
+        except (ValueError, TypeError):
+            return jsonify({
+                "status": "error",
+                "message": "Invalid latitude or longitude numeric values."
+            }), 400
+
+        try:
+            nearby = find_nearby_disasters(lat_float, lon_float, radius_km=500.0)
+        except Exception as g_err:
+            logger.error(f"GDACS lookup error: {g_err}")
+            return jsonify({
+                "status": "error",
+                "message": "Could not reach the global disaster monitor right now — try typing your location manually."
+            }), 503
+
+        if not nearby:
+            return jsonify({
+                "status": "none_found",
+                "message": "No active disasters detected near your location (within 500 km) per GDACS global monitoring. You can still search manually above."
+            }), 200
+
+        top = nearby[0]
+        location_label = top.get("country") or top.get("event_name") or "nearby location"
+        query = f"{top['event_type']} near {location_label}"
+        gdacs_source_url = f"https://www.gdacs.org/report.aspx?eventid={top['eventid']}&eventtype={top['event_type_code']}"
+
+        # Save lookup metadata for when user presses 'Analyze Crisis'
+        GDACS_LOOKUPS[query] = {
+            "gdacs_verified": True,
+            "gdacs_alert_level": top["alert_level"],
+            "gdacs_distance_km": top["distance_km"],
+            "gdacs_source_url": gdacs_source_url
+        }
+
+        return jsonify({
+            "status": "found",
+            "query": query,
+            "event_type": top["event_type"],
+            "location_label": location_label,
+            "alert_level": top["alert_level"],
+            "distance_km": top["distance_km"],
+            "gdacs_source_url": gdacs_source_url
+        }), 200
+
+    except Exception as e:
+        logger.error(f"Error in /api/nearby-disaster/lookup: {e}", exc_info=True)
+        return jsonify({
+            "status": "error",
+            "message": f"Nearby disaster lookup failed: {str(e)}"
         }), 500
 
 
@@ -215,7 +298,6 @@ def nearby_disaster():
             }), 200
 
         top = nearby[0]
-        # Build query for live analysis pipeline
         location_label = top.get("country") or top.get("event_name") or "nearby location"
         query = f"{top['event_type']} near {location_label}"
         

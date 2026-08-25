@@ -1206,8 +1206,16 @@ function plotSosMarkersOnMap(logs) {
 /**
  * Location-triggered GDACS Nearby Disaster Detection Handler
  */
+let originalExamplesHtml = '';
+
 function initNearbyDetection() {
     const detectBtn = document.getElementById('detectNearbyBtn');
+    const examplesRow = document.getElementById('globalExamplesRow');
+
+    if (examplesRow && !originalExamplesHtml) {
+        originalExamplesHtml = examplesRow.innerHTML;
+    }
+
     if (!detectBtn) return;
 
     detectBtn.addEventListener('click', () => {
@@ -1225,7 +1233,7 @@ function initNearbyDetection() {
                 showNearbyStatus('loading', 'Checking GDACS global disaster monitor...');
                 
                 try {
-                    const res = await fetch('/api/nearby-disaster', {
+                    const res = await fetch('/api/nearby-disaster/lookup', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ latitude, longitude }),
@@ -1237,7 +1245,7 @@ function initNearbyDetection() {
                     }
                     
                     const data = await res.json();
-                    handleNearbyResult(data);
+                    handleNearbyLookupResult(data);
                 } catch (err) {
                     console.error('Nearby disaster lookup error:', err);
                     showNearbyStatus('error', 'Could not reach the global disaster monitor right now — try typing your location manually.');
@@ -1276,30 +1284,73 @@ function showNearbyStatus(type, message) {
     }
 }
 
-function handleNearbyResult(data) {
+function handleNearbyLookupResult(data) {
     if (data.status === 'none_found') {
         showNearbyStatus('info', data.message || 'No active disasters detected near your location (within 500 km) per GDACS global monitoring. You can still search manually above.');
-        return; // DO NOT render false sample dashboard
-    }
-
-    if (data.status === 'error') {
-        showNearbyStatus('error', data.message || 'Location lookup failed.');
         return;
     }
 
-    const distKm = data.gdacs_distance_km || (data.data && data.data.gdacs_distance_km) || '0';
-    showNearbyStatus('success', `🛰️ GDACS-verified event detected — ${distKm} km away`);
-
-    if (data.data) {
-        if (data.gdacs_verified) data.data.gdacs_verified = true;
-        if (data.gdacs_alert_level) data.data.gdacs_alert_level = data.gdacs_alert_level;
-        if (data.gdacs_distance_km) data.data.gdacs_distance_km = data.gdacs_distance_km;
-        if (data.gdacs_source_url) data.data.gdacs_source_url = data.gdacs_source_url;
-
-        currentAnalysisData = data.data;
-        sessionStorage.setItem('currentDisasterReport', JSON.stringify(currentAnalysisData));
-        renderDashboard(currentAnalysisData);
+    if (data.status === 'error') {
+        showNearbyStatus('error', data.message || 'Could not check nearby disasters.');
+        return;
     }
+
+    showNearbyStatus('success', `🛰️ GDACS-verified event found — ${data.distance_km} km away`);
+
+    const examplesRow = document.getElementById('globalExamplesRow');
+    if (!examplesRow) return;
+
+    if (!originalExamplesHtml) {
+        originalExamplesHtml = examplesRow.innerHTML;
+    }
+
+    const alertBadgeClass = data.alert_level === 'Red' ? 'bg-danger' : (data.alert_level === 'Orange' ? 'bg-warning text-dark' : 'bg-success');
+
+    examplesRow.innerHTML = `
+        <small class="text-warning fw-bold font-mono me-2 fs-6">Near You:</small>
+        <span class="sample-pill nearby-pill border border-danger shadow-sm" tabindex="0" role="button" data-query="${escapeHtml(data.query)}">
+            <i class="bi bi-broadcast text-danger me-1"></i> ${escapeHtml(data.query)}
+            <span class="badge ${alertBadgeClass} font-mono fs-8 ms-1" title="Verified by GDACS · Alert: ${escapeHtml(data.alert_level)}">🛰️ GDACS</span>
+        </span>
+        <button id="resetToExamplesBtn" class="btn btn-link text-warning font-mono fs-7 p-0 ms-2 text-decoration-none" type="button">↺ Show generic examples</button>
+    `;
+
+    const nearbyPill = examplesRow.querySelector('.nearby-pill');
+    if (nearbyPill) {
+        nearbyPill.addEventListener('click', () => {
+            const queryInput = document.getElementById('disasterQuery');
+            if (queryInput) {
+                queryInput.value = data.query;
+            }
+        });
+    }
+
+    const resetBtn = document.getElementById('resetToExamplesBtn');
+    if (resetBtn) {
+        resetBtn.addEventListener('click', restoreOriginalExamplePills);
+    }
+}
+
+function restoreOriginalExamplePills() {
+    const examplesRow = document.getElementById('globalExamplesRow');
+    if (examplesRow && originalExamplesHtml) {
+        examplesRow.innerHTML = originalExamplesHtml;
+
+        const samplePills = examplesRow.querySelectorAll('.sample-pill');
+        const queryInput = document.getElementById('disasterQuery');
+        samplePills.forEach(pill => {
+            pill.addEventListener('click', () => {
+                const query = pill.getAttribute('data-query');
+                if (queryInput) {
+                    queryInput.value = query;
+                    performAnalysis();
+                }
+            });
+        });
+    }
+
+    const box = document.getElementById('nearbyStatusBox');
+    if (box) box.classList.add('d-none');
 }
 
 /**
