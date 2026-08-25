@@ -91,6 +91,9 @@ function initEventListeners() {
     // Initialize GDACS Nearby Detection Handler
     initNearbyDetection();
 
+    // Initialize Search Bar Dropdown Location Suggestion Popup
+    initSearchLocationPopup();
+
     // AI Copilot Interactions (Admin Only)
     if (copilotToggleBtn) {
         copilotToggleBtn.addEventListener('click', () => {
@@ -1767,4 +1770,40 @@ function initEmergencyFab() {
             }
         });
     }
+}
+
+/**
+ * Feature: Search Bar Dropdown Location Suggestion Popup ("📍 Use current location")
+ */
+function initSearchLocationPopup() {
+    const input = document.getElementById('disasterQuery');
+    const popup = document.getElementById('searchLocationPopup');
+    const option = document.getElementById('useCurrentLocationOption');
+    const detectBtn = document.getElementById('detectNearbyBtn');
+
+    if (!input || !popup || !option) return;
+
+    input.addEventListener('focus', () => {
+        popup.classList.remove('d-none');
+    });
+
+    option.addEventListener('click', (e) => {
+        e.stopPropagation();
+        popup.classList.add('d-none');
+        if (detectBtn) {
+            detectBtn.click();
+        }
+    });
+
+    document.addEventListener('click', (e) => {
+        if (!input.contains(e.target) && !popup.contains(e.target)) {
+            popup.classList.add('d-none');
+        }
+    });
+
+    input.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+            popup.classList.add('d-none');
+        }
+    });
 }

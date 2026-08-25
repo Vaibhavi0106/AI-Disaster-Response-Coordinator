@@ -87,9 +87,20 @@
             <!-- Search Bar -->
             <div class="search-box-container mb-3">
                 <div class="search-input-wrapper glass-panel p-2 d-flex flex-column flex-lg-row align-items-stretch align-items-lg-center gap-2">
-                    <div class="search-field-container flex-grow-1">
+                    <div class="search-field-container flex-grow-1 position-relative">
                         <i class="bi bi-search search-icon-inside"></i>
                         <input type="text" id="disasterQuery" class="search-input" placeholder="Type ANY query: e.g. Flood in Mumbai, Landslide in Wayanad, Earthquake in Tokyo..." autocomplete="off">
+                        
+                        <!-- Search Bar Dropdown Location Suggestion Popup -->
+                        <div id="searchLocationPopup" class="position-absolute start-0 end-0 top-100 mt-2 glass-panel p-2 shadow-lg rounded border border-warning d-none" style="z-index: 1060; background: rgba(15, 23, 42, 0.98); backdrop-filter: blur(12px);">
+                            <div id="useCurrentLocationOption" class="search-location-popup-item p-2 rounded d-flex align-items-center gap-2 text-warning font-mono fs-7 fw-bold" style="cursor: pointer;">
+                                <i class="bi bi-geo-alt-fill text-danger fs-4"></i>
+                                <div>
+                                    <div class="text-white fw-bold">📍 Use current location</div>
+                                    <div class="text-warning fs-8 font-mono fw-normal">Detect real active disasters near me via GDACS global monitoring</div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                     <div class="d-flex align-items-center gap-2">
                         <button id="searchBtn" class="btn-analyze text-nowrap">

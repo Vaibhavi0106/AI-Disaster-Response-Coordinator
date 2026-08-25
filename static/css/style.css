@@ -215,6 +215,17 @@ h1, h2, h3, h4, h5, h6, .brand-text {
   color: #000000 !important;
 }
 
+/* Search Location Popup Item */
+.search-location-popup-item {
+  transition: all 0.2s ease;
+  border: 1px solid transparent;
+}
+
+.search-location-popup-item:hover {
+  background: rgba(255, 193, 7, 0.15) !important;
+  border-color: var(--accent-yellow) !important;
+}
+
 /* Scenario Pills */
 .sample-pill {
   background: #1a1a1a;
