@@ -832,11 +832,13 @@
     </div>
     {% endif %}
 
-    <!-- 2. Bottom-Center: Floating First Aid Guide Button (Everyone — Admin & Field User/Public) -->
+    <!-- 2. Bottom-Center: Floating First Aid Guide Button (Field Users & Public ONLY — NEVER Admin) -->
+    {% if not (user and user.role == 'admin') %}
     <button id="firstAidFab" class="btn btn-dark border border-info text-info font-mono fw-bold px-3 py-2 rounded-pill shadow-lg d-flex align-items-center gap-2 position-fixed bottom-0 start-50 translate-middle-x mb-4" style="z-index: 1040; background: rgba(15, 23, 42, 0.95); backdrop-filter: blur(8px);" data-bs-toggle="modal" data-bs-target="#firstAidModal">
         <i class="bi bi-bandaid-fill text-info fs-5"></i>
         <span>🩹 First Aid Guide</span>
     </button>
+    {% endif %}
 
     <!-- 3. Bottom-Right: Floating AI Copilot Trigger (Admin Only) -->
     {% if user and user.role == 'admin' %}
