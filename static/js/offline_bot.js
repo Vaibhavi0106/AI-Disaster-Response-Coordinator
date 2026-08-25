@@ -142,6 +142,24 @@ function initOfflineBotUI() {
     const chatInput = document.getElementById('offlineChatInput');
     const chatSendBtn = document.getElementById('offlineChatSendBtn');
 
+    const toggleBtn = document.getElementById('offlineBotToggleBtn');
+    const closeBtn = document.getElementById('offlineBotCloseBtn');
+    const panel = document.getElementById('offlineBotPanel');
+    const chips = document.querySelectorAll('.offline-bot-chip');
+
+    if (toggleBtn && panel) {
+        toggleBtn.addEventListener('click', () => {
+            const isVisible = window.getComputedStyle(panel).display !== 'none';
+            panel.style.display = isVisible ? 'none' : 'flex';
+        });
+    }
+
+    if (closeBtn && panel) {
+        closeBtn.addEventListener('click', () => {
+            panel.style.display = 'none';
+        });
+    }
+
     // Update status badge on page load
     updateBotStatusBadge();
 
@@ -200,6 +218,16 @@ function initOfflineBotUI() {
         chatSendBtn.addEventListener('click', handleSend);
         chatInput.addEventListener('keypress', (e) => {
             if (e.key === 'Enter') handleSend();
+        });
+
+        chips.forEach(chip => {
+            chip.addEventListener('click', () => {
+                const q = chip.getAttribute('data-question');
+                if (q) {
+                    chatInput.value = q;
+                    handleSend();
+                }
+            });
         });
     }
 }

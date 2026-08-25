@@ -740,11 +740,6 @@
                                 <i class="bi bi-shield-exclamation me-1"></i> Survival by Disaster Type
                             </button>
                         </li>
-                        <li class="nav-item" role="presentation">
-                            <button class="nav-link bg-dark text-white border border-secondary" id="tab-bot" data-bs-toggle="tab" data-bs-target="#pane-bot" type="button" role="tab">
-                                <i class="bi bi-robot text-info me-1"></i> 💬 Offline AI Assistant
-                            </button>
-                        </li>
                     </ul>
 
                     <div class="tab-content" id="firstAidTabContent">
@@ -760,57 +755,6 @@
                         <!-- Tab 2: Survival by Disaster Type -->
                         <div class="tab-pane fade" id="pane-disasters" role="tabpanel">
                             <div id="firstAidDisasterTips" class="d-flex flex-column gap-3 font-mono fs-7"></div>
-                        </div>
-
-                        <!-- Tab 3: Offline AI Survival Assistant (Transformers.js) -->
-                        <div class="tab-pane fade" id="pane-bot" role="tabpanel">
-                            <div class="p-3 bg-dark rounded border border-secondary mb-3 font-mono fs-7">
-                                <div class="d-flex justify-content-between align-items-center mb-2">
-                                    <div>
-                                        <strong class="text-info d-block"><i class="bi bi-cpu-fill me-1"></i> CLIENT-SIDE AI SURVIVAL ASSISTANT</strong>
-                                        <span class="text-secondary fs-8">Runs 100% offline inside browser (transformers.js SmolLM2-360M)</span>
-                                    </div>
-                                    <div id="modelStatusBadgeContainer">
-                                        <span id="modelStatusBadge" class="badge bg-secondary font-mono fs-8">Not Downloaded</span>
-                                    </div>
-                                </div>
-
-                                <!-- Download Pre-cache Section -->
-                                <div id="modelDownloadBox" class="p-2 rounded bg-body-tertiary border border-secondary mt-2">
-                                    <p class="fs-8 text-white mb-2">
-                                        To use conversational AI offline, download the small ONNX model (~250MB) while connected to the internet.
-                                    </p>
-                                    <button id="prepareOfflineModelBtn" class="btn btn-sm btn-info font-mono fw-bold text-dark w-100">
-                                        <i class="bi bi-download me-1"></i> Download AI Model for Offline Use (~250MB)
-                                    </button>
-                                    <!-- Progress Bar -->
-                                    <div id="modelProgressContainer" class="mt-2 d-none">
-                                        <div class="progress bg-dark border border-secondary" style="height: 16px;">
-                                            <div id="modelProgressBar" class="progress-bar progress-bar-striped progress-bar-animated bg-info font-mono fs-8" style="width: 0%;">0%</div>
-                                        </div>
-                                        <div id="modelProgressText" class="fs-8 text-info font-mono text-center mt-1">Initializing download...</div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <!-- Chat Box UI -->
-                            <div class="p-3 bg-dark rounded border border-secondary d-flex flex-column font-mono" style="height: 320px;">
-                                <div id="offlineChatMessages" class="flex-grow-1 overflow-auto pe-2 d-flex flex-column gap-2 fs-7 mb-3">
-                                    <div class="p-2 rounded bg-secondary bg-opacity-25 text-white border border-secondary">
-                                        <strong class="text-info d-block fs-8"><i class="bi bi-robot me-1"></i> Emergency AI Assistant:</strong>
-                                        Hello! Ask me any medical or first-aid question. I will provide grounded answers from verified Red Cross / WHO procedures.
-                                        <div class="mt-1 text-warning fs-8 border-top border-secondary pt-1">
-                                            ⚠️ Offline assistant — for a real emergency, use SOS or call the hotlines above.
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="input-group">
-                                    <input type="text" id="offlineChatInput" class="form-control form-control-sm bg-dark text-white border-secondary fs-7" placeholder="Ask a first-aid question (e.g. 'how to stop severe bleeding')...">
-                                    <button id="offlineChatSendBtn" class="btn btn-sm btn-info font-mono fw-bold text-dark px-3" type="button">
-                                        <i class="bi bi-send-fill me-1"></i> Ask
-                                    </button>
-                                </div>
-                            </div>
                         </div>
                     </div>
                 </div>
@@ -896,7 +840,82 @@
     </button>
     {% endif %}
 
-    <!-- 3. Bottom-Right: Floating AI Copilot Trigger (Admin Only) -->
+    <!-- 3. Bottom-Right: FLOATING OFFLINE AI SURVIVAL ASSISTANT (Field Users & Public ONLY — NEVER Admin) -->
+    {% if not (user and user.role == 'admin') %}
+    <button id="offlineBotToggleBtn" class="offline-bot-floating-btn" title="Open Offline AI Survival Assistant">
+        <i class="bi bi-robot text-info fs-5"></i>
+        <span>🤖 Offline AI</span>
+    </button>
+
+    <div id="offlineBotPanel" class="offline-bot-panel">
+        <!-- Header -->
+        <div class="offline-bot-header">
+            <div class="d-flex align-items-center gap-2">
+                <i class="bi bi-robot text-info fs-5"></i>
+                <div>
+                    <strong class="text-white font-mono fs-7 d-block">OFFLINE AI ASSISTANT</strong>
+                    <small class="text-info font-mono fs-8">In-Browser Grounded Inference</small>
+                </div>
+            </div>
+            <div class="d-flex align-items-center gap-2">
+                <div id="modelStatusBadgeContainer">
+                    <span id="modelStatusBadge" class="badge bg-secondary font-mono fs-8">Not Cached</span>
+                </div>
+                <button id="offlineBotCloseBtn" class="btn btn-sm text-white fs-5 p-0 border-0 ms-1" title="Close Panel">
+                    <i class="bi bi-x-lg"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- Download Pre-cache Section -->
+        <div id="modelDownloadBox" class="p-2 border-bottom border-secondary bg-dark font-mono fs-8">
+            <p class="text-white mb-2 fs-8">
+                Pre-download model (~250MB) while connected to use conversational AI offline.
+            </p>
+            <button id="prepareOfflineModelBtn" class="btn btn-sm btn-info font-mono fw-bold text-dark w-100">
+                <i class="bi bi-download me-1"></i> Download AI Model (~250MB)
+            </button>
+            <!-- Progress Bar -->
+            <div id="modelProgressContainer" class="mt-2 d-none">
+                <div class="progress bg-dark border border-secondary" style="height: 16px;">
+                    <div id="modelProgressBar" class="progress-bar progress-bar-striped progress-bar-animated bg-info font-mono fs-8" style="width: 0%;">0%</div>
+                </div>
+                <div id="modelProgressText" class="fs-8 text-info font-mono text-center mt-1">Initializing download...</div>
+            </div>
+        </div>
+
+        <!-- Chat History Area -->
+        <div id="offlineChatMessages" class="offline-bot-body font-mono fs-7">
+            <div class="offline-bot-msg msg-ai p-2 rounded bg-secondary bg-opacity-25 text-white border border-secondary">
+                <strong class="text-info d-block fs-8"><i class="bi bi-robot me-1"></i> Emergency AI Assistant:</strong>
+                Hello! Ask me any medical or first-aid question. I will provide grounded answers from verified Red Cross / WHO procedures.
+                <div class="mt-1 text-warning fs-8 border-top border-secondary pt-1">
+                    ⚠️ Offline assistant — for a real emergency, use SOS or call the hotlines above.
+                </div>
+            </div>
+        </div>
+
+        <!-- Suggested Prompt Chips Row -->
+        <div class="offline-bot-chips-row" id="offlineBotChipsRow">
+            <span class="offline-bot-chip" data-question="How to stop severe bleeding?">Severe Bleeding</span>
+            <span class="offline-bot-chip" data-question="How to perform CPR?">CPR Steps</span>
+            <span class="offline-bot-chip" data-question="How to treat a burn?">Burn Treatment</span>
+            <span class="offline-bot-chip" data-question="How to handle a fracture?">Fracture First-Aid</span>
+            <span class="offline-bot-chip" data-question="What to do during a flood?">Flood Survival</span>
+            <span class="offline-bot-chip" data-question="Earthquake survival tips">Earthquake Safety</span>
+        </div>
+
+        <!-- Footer Input Form -->
+        <div class="offline-bot-footer">
+            <input type="text" id="offlineChatInput" class="offline-bot-input font-mono fs-7" placeholder="Ask a first-aid question..." autocomplete="off">
+            <button id="offlineChatSendBtn" class="offline-bot-send-btn">
+                <i class="bi bi-send-fill"></i>
+            </button>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- 4. Bottom-Right: Floating AI Copilot Trigger (Admin Only) -->
     {% if user and user.role == 'admin' %}
     <button id="copilotToggleBtn" class="btn btn-warning rounded-circle shadow-lg p-0 position-fixed bottom-0 end-0 me-4 mb-4 d-flex align-items-center justify-content-center" style="width: 58px; height: 58px; z-index: 1040;" title="AI EOC Copilot">
         <i class="bi bi-robot fs-3 text-dark"></i>
