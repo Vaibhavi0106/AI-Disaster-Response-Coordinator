@@ -91,9 +91,6 @@ function initEventListeners() {
     // Initialize GDACS Nearby Detection Handler
     initNearbyDetection();
 
-    // Initialize Search Bar Dropdown Location Suggestion Popup
-    initSearchLocationPopup();
-
     // AI Copilot Interactions (Admin Only)
     if (copilotToggleBtn) {
         copilotToggleBtn.addEventListener('click', () => {
@@ -250,12 +247,13 @@ function renderDashboard(data) {
     const gdacsBadge = document.getElementById('gdacsBadge');
     if (gdacsBadge) {
         if (data.gdacs_verified) {
+            const evType = data.gdacs_event_type ? `${data.gdacs_event_type} confirmed` : 'Event confirmed';
             const alertLvl = data.gdacs_alert_level || 'Alert';
             const distKm = data.gdacs_distance_km || '0';
             const srcUrl = data.gdacs_source_url || 'https://www.gdacs.org';
             
             gdacsBadge.className = 'badge bg-danger text-white border border-warning font-mono py-2 px-3 fs-7 shadow-sm d-inline-flex align-items-center gap-1';
-            gdacsBadge.innerHTML = `<a href="${srcUrl}" target="_blank" rel="noopener noreferrer" class="text-white text-decoration-none d-inline-flex align-items-center gap-1"><i class="bi bi-broadcast text-warning me-1"></i> 🛰️ GDACS Verified · Alert Level: ${alertLvl} · ${distKm} km away <i class="bi bi-box-arrow-up-right ms-1 fs-8"></i></a>`;
+            gdacsBadge.innerHTML = `<a href="${srcUrl}" target="_blank" rel="noopener noreferrer" class="text-white text-decoration-none d-inline-flex align-items-center gap-1"><i class="bi bi-broadcast text-warning me-1"></i> 🛰️ GDACS Verified · ${evType} ${distKm} km away · Alert Level: ${alertLvl} <i class="bi bi-box-arrow-up-right ms-1 fs-8"></i></a>`;
         } else {
             gdacsBadge.className = 'd-none';
             gdacsBadge.innerHTML = '';
@@ -1219,11 +1217,6 @@ function initNearbyDetection() {
         originalExamplesHtml = examplesRow.innerHTML;
     }
 
-    const useLocPill = document.getElementById('useCurrentLocationPill');
-    if (useLocPill && detectBtn) {
-        useLocPill.addEventListener('click', () => detectBtn.click());
-    }
-
     if (!detectBtn) return;
 
     detectBtn.addEventListener('click', () => {
@@ -1303,7 +1296,11 @@ function handleNearbyLookupResult(data) {
         return;
     }
 
-    showNearbyStatus('success', `🛰️ GDACS-verified event found — ${data.distance_km} km away`);
+    const locLabel = data.user_location_label || 'your location';
+    const evType = data.event_type || 'disaster';
+    const distKm = data.distance_km || '0';
+
+    showNearbyStatus('success', `🛰️ ${evType} confirmed ${distKm} km from ${locLabel}`);
 
     const examplesRow = document.getElementById('globalExamplesRow');
     if (!examplesRow) return;
@@ -1313,17 +1310,17 @@ function handleNearbyLookupResult(data) {
     }
 
     const alertBadgeClass = data.alert_level === 'Red' ? 'bg-danger' : (data.alert_level === 'Orange' ? 'bg-warning text-dark' : 'bg-success');
+    const gdacsLoc = data.gdacs_event_location ? ` · near ${escapeHtml(data.gdacs_event_location)}` : '';
 
     examplesRow.innerHTML = `
-        <small class="text-warning fw-bold font-mono me-2 fs-6">Near You:</small>
+        <small class="text-warning fw-bold font-mono me-2 fs-6">Your Location:</small>
         <span class="sample-pill nearby-pill border border-danger shadow-sm" tabindex="0" role="button" data-query="${escapeHtml(data.query)}">
-            <i class="bi bi-broadcast text-danger me-1"></i> ${escapeHtml(data.query)}
-            <span class="badge ${alertBadgeClass} font-mono fs-8 ms-1" title="Verified by GDACS · Alert: ${escapeHtml(data.alert_level)}">🛰️ GDACS</span>
+            <i class="bi bi-geo-alt-fill text-danger me-1"></i> ${escapeHtml(locLabel)}
+            <span class="badge ${alertBadgeClass} font-mono fs-8 ms-1" title="GDACS confirmed: ${escapeHtml(evType)} · ${distKm} km away${gdacsLoc}">
+                🛰️ ${escapeHtml(evType)}
+            </span>
         </span>
-        <button id="useCurrentLocationPill" class="btn btn-outline-warning font-mono fs-7 fw-bold px-3 py-1 rounded-pill ms-2 d-inline-flex align-items-center gap-1" type="button">
-            <i class="bi bi-geo-alt-fill text-danger me-1"></i> 📍 Use current location
-        </button>
-        <button id="resetToExamplesBtn" class="btn btn-link text-warning font-mono fs-7 p-0 ms-2 text-decoration-none" type="button">↺ Show generic examples</button>
+        <button id="resetToExamplesBtn" class="btn btn-link text-warning font-mono fs-7 p-0 ms-2 text-decoration-none" type="button">🌍 Show world examples</button>
     `;
 
     const nearbyPill = examplesRow.querySelector('.nearby-pill');
@@ -1336,12 +1333,6 @@ function handleNearbyLookupResult(data) {
         });
     }
 
-    const detectBtn = document.getElementById('detectNearbyBtn');
-    const useLocPill = document.getElementById('useCurrentLocationPill');
-    if (useLocPill && detectBtn) {
-        useLocPill.addEventListener('click', () => detectBtn.click());
-    }
-
     const resetBtn = document.getElementById('resetToExamplesBtn');
     if (resetBtn) {
         resetBtn.addEventListener('click', restoreOriginalExamplePills);
@@ -1352,12 +1343,6 @@ function restoreOriginalExamplePills() {
     const examplesRow = document.getElementById('globalExamplesRow');
     if (examplesRow && originalExamplesHtml) {
         examplesRow.innerHTML = originalExamplesHtml;
-
-        const detectBtn = document.getElementById('detectNearbyBtn');
-        const useLocPill = document.getElementById('useCurrentLocationPill');
-        if (useLocPill && detectBtn) {
-            useLocPill.addEventListener('click', () => detectBtn.click());
-        }
 
         const samplePills = examplesRow.querySelectorAll('.sample-pill');
         const queryInput = document.getElementById('disasterQuery');
@@ -1790,40 +1775,4 @@ function initEmergencyFab() {
             }
         });
     }
-}
-
-/**
- * Feature: Search Bar Dropdown Location Suggestion Popup ("📍 Use current location")
- */
-function initSearchLocationPopup() {
-    const input = document.getElementById('disasterQuery');
-    const popup = document.getElementById('searchLocationPopup');
-    const option = document.getElementById('useCurrentLocationOption');
-    const detectBtn = document.getElementById('detectNearbyBtn');
-
-    if (!input || !popup || !option) return;
-
-    input.addEventListener('focus', () => {
-        popup.classList.remove('d-none');
-    });
-
-    option.addEventListener('click', (e) => {
-        e.stopPropagation();
-        popup.classList.add('d-none');
-        if (detectBtn) {
-            detectBtn.click();
-        }
-    });
-
-    document.addEventListener('click', (e) => {
-        if (!input.contains(e.target) && !popup.contains(e.target)) {
-            popup.classList.add('d-none');
-        }
-    });
-
-    input.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape') {
-            popup.classList.add('d-none');
-        }
-    });
 }

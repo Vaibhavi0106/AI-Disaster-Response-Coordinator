@@ -60,7 +60,9 @@ def filter_for_role(disaster_json: dict, role: str) -> dict:
     allowed_keys = {
         "disaster_type", "summary", "severity", "affected_locations",
         "recommended_resources_public", "safety_measures", "evacuation_shelters",
-        "sources_public", "weather_metrics", "impact_radius", "emergency_contacts"
+        "sources_public", "weather_metrics", "impact_radius", "emergency_contacts",
+        "gdacs_verified", "gdacs_event_type", "gdacs_alert_level", "gdacs_distance_km",
+        "gdacs_event_location", "gdacs_source_url"
     }
 
     filtered = {k: v for k, v in disaster_json.items() if k in allowed_keys}
@@ -129,6 +131,9 @@ def report():
 GDACS_LOOKUPS = {}
 
 
+from geocode_client import reverse_geocode
+
+
 @app.route("/api/analyze", methods=["POST"])
 def analyze_disaster():
     """
@@ -157,8 +162,10 @@ def analyze_disaster():
         if query in GDACS_LOOKUPS:
             gd_info = GDACS_LOOKUPS[query]
             result_json["gdacs_verified"] = gd_info["gdacs_verified"]
+            result_json["gdacs_event_type"] = gd_info.get("event_type", "")
             result_json["gdacs_alert_level"] = gd_info["gdacs_alert_level"]
             result_json["gdacs_distance_km"] = gd_info["gdacs_distance_km"]
+            result_json["gdacs_event_location"] = gd_info.get("gdacs_event_location", "")
             result_json["gdacs_source_url"] = gd_info["gdacs_source_url"]
 
         # Apply role-based field filtering before sending to client
@@ -184,8 +191,8 @@ def analyze_disaster():
 @app.route("/api/nearby-disaster/lookup", methods=["POST"])
 def nearby_disaster_lookup():
     """
-    Cheap GDACS-only check. Does NOT call Tavily/LangChain.
-    Returns nearest active GDACS disaster event within 500 km and the query string to use.
+    Cheap GDACS + reverse-geocode check. Does NOT call Tavily/LangChain.
+    Tells the frontend what's near the user in terms of the user's OWN location.
     """
     try:
         data = request.get_json(silent=True) or {}
@@ -223,23 +230,29 @@ def nearby_disaster_lookup():
             }), 200
 
         top = nearby[0]
-        location_label = top.get("country") or top.get("event_name") or "nearby location"
-        query = f"{top['event_type']} near {location_label}"
+        user_loc = reverse_geocode(lat_float, lon_float)
+        
+        # Build query focused on USER's location
+        query = f"{top['event_type']} warning near {user_loc['label']}"
+        gdacs_event_location = top.get("country") or top.get("event_name") or "nearby region"
         gdacs_source_url = f"https://www.gdacs.org/report.aspx?eventid={top['eventid']}&eventtype={top['event_type_code']}"
 
         # Save lookup metadata for when user presses 'Analyze Crisis'
         GDACS_LOOKUPS[query] = {
             "gdacs_verified": True,
+            "event_type": top["event_type"],
             "gdacs_alert_level": top["alert_level"],
             "gdacs_distance_km": top["distance_km"],
+            "gdacs_event_location": gdacs_event_location,
             "gdacs_source_url": gdacs_source_url
         }
 
         return jsonify({
             "status": "found",
             "query": query,
+            "user_location_label": user_loc["label"],
             "event_type": top["event_type"],
-            "location_label": location_label,
+            "gdacs_event_location": gdacs_event_location,
             "alert_level": top["alert_level"],
             "distance_km": top["distance_km"],
             "gdacs_source_url": gdacs_source_url
