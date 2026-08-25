@@ -1297,8 +1297,9 @@ function handleNearbyLookupResult(data) {
     }
 
     const locLabel = data.user_location_label || 'your location';
-    const evType = data.event_type || 'disaster';
+    const evType = data.event_type || 'Disaster';
     const distKm = data.distance_km || '0';
+    const gdacsLoc = data.gdacs_event_location || 'nearby region';
 
     showNearbyStatus('success', `🛰️ ${evType} confirmed ${distKm} km from ${locLabel}`);
 
@@ -1310,28 +1311,31 @@ function handleNearbyLookupResult(data) {
     }
 
     const alertBadgeClass = data.alert_level === 'Red' ? 'bg-danger' : (data.alert_level === 'Orange' ? 'bg-warning text-dark' : 'bg-success');
-    const gdacsLoc = data.gdacs_event_location ? ` · near ${escapeHtml(data.gdacs_event_location)}` : '';
 
     examplesRow.innerHTML = `
-        <small class="text-warning fw-bold font-mono me-2 fs-6">Your Location:</small>
-        <span class="sample-pill nearby-pill border border-danger shadow-sm" tabindex="0" role="button" data-query="${escapeHtml(data.query)}">
-            <i class="bi bi-geo-alt-fill text-danger me-1"></i> ${escapeHtml(locLabel)}
-            <span class="badge ${alertBadgeClass} font-mono fs-8 ms-1" title="GDACS confirmed: ${escapeHtml(evType)} · ${distKm} km away${gdacsLoc}">
-                🛰️ ${escapeHtml(evType)}
+        <small class="text-warning fw-bold font-mono me-2 fs-6">Near You:</small>
+        <span class="sample-pill nearby-pill border border-info shadow-sm" tabindex="0" role="button" data-query="${escapeHtml(data.local_query)}">
+            <i class="bi bi-geo-alt-fill text-info me-1"></i> ${escapeHtml(locLabel)}
+        </span>
+        <span class="sample-pill nearby-pill gdacs-pill border border-danger shadow-sm ms-2" tabindex="0" role="button" data-query="${escapeHtml(data.gdacs_query)}">
+            <i class="bi bi-broadcast text-danger me-1"></i> ${escapeHtml(evType)} — ${escapeHtml(gdacsLoc)}
+            <span class="badge ${alertBadgeClass} font-mono fs-8 ms-1" title="Alert level: ${escapeHtml(data.alert_level)}">
+                🛰️ GDACS · ${distKm} km away
             </span>
         </span>
-        <button id="resetToExamplesBtn" class="btn btn-link text-warning font-mono fs-7 p-0 ms-2 text-decoration-none" type="button">🌍 Show world examples</button>
+        <button id="resetToExamplesBtn" class="btn btn-link text-warning font-mono fs-7 p-0 ms-3 text-decoration-none" type="button">🌍 Show world examples</button>
     `;
 
-    const nearbyPill = examplesRow.querySelector('.nearby-pill');
-    if (nearbyPill) {
-        nearbyPill.addEventListener('click', () => {
-            const queryInput = document.getElementById('disasterQuery');
+    const samplePills = examplesRow.querySelectorAll('.sample-pill');
+    const queryInput = document.getElementById('disasterQuery');
+    samplePills.forEach(pill => {
+        pill.addEventListener('click', () => {
+            const query = pill.getAttribute('data-query');
             if (queryInput) {
-                queryInput.value = data.query;
+                queryInput.value = query;
             }
         });
-    }
+    });
 
     const resetBtn = document.getElementById('resetToExamplesBtn');
     if (resetBtn) {

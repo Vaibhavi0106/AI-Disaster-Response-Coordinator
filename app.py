@@ -231,28 +231,30 @@ def nearby_disaster_lookup():
 
         top = nearby[0]
         user_loc = reverse_geocode(lat_float, lon_float)
-        
-        # Build query focused on USER's location
-        query = f"{top['event_type']} warning near {user_loc['label']}"
-        gdacs_event_location = top.get("country") or top.get("event_name") or "nearby region"
+        gdacs_place = top.get("country") or top.get("event_name") or "nearby region"
+
+        # TWO separate queries — two separate pills:
+        local_query = f"Latest disaster or emergency situation near {user_loc['label']}"
+        gdacs_query = f"{top['event_type']} near {gdacs_place}"
         gdacs_source_url = f"https://www.gdacs.org/report.aspx?eventid={top['eventid']}&eventtype={top['event_type_code']}"
 
-        # Save lookup metadata for when user presses 'Analyze Crisis'
-        GDACS_LOOKUPS[query] = {
+        # Save lookup metadata specifically for the confirmed GDACS event query
+        GDACS_LOOKUPS[gdacs_query] = {
             "gdacs_verified": True,
             "event_type": top["event_type"],
             "gdacs_alert_level": top["alert_level"],
             "gdacs_distance_km": top["distance_km"],
-            "gdacs_event_location": gdacs_event_location,
+            "gdacs_event_location": gdacs_place,
             "gdacs_source_url": gdacs_source_url
         }
 
         return jsonify({
             "status": "found",
-            "query": query,
+            "local_query": local_query,
             "user_location_label": user_loc["label"],
+            "gdacs_query": gdacs_query,
             "event_type": top["event_type"],
-            "gdacs_event_location": gdacs_event_location,
+            "gdacs_event_location": gdacs_place,
             "alert_level": top["alert_level"],
             "distance_km": top["distance_km"],
             "gdacs_source_url": gdacs_source_url
