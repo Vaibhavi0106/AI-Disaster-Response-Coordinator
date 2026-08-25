@@ -27,31 +27,41 @@
                 </div>
             </a>
             
-            <div class="d-flex align-items-center gap-3 ms-auto">
-                <div class="d-none d-md-flex align-items-center gap-2 px-3 py-1 rounded-pill bg-dark border border-warning font-mono fs-7">
-                    <span class="pulse-radar"></span>
-                    <span class="text-warning fw-bold">EOC LIVE TELEMETRY: ACTIVE</span>
-                </div>
-
-                <!-- User Role / Authentication Badge -->
-                <div class="d-flex align-items-center gap-2">
+            <div class="d-flex align-items-center gap-2 flex-wrap">
+                <!-- Logged In User / Role Profile Badge -->
+                <div class="d-flex align-items-center gap-2 font-mono fs-7">
                     {% if user %}
-                        <div class="px-3 py-1 rounded bg-dark border border-secondary font-mono fs-7 text-white d-flex align-items-center gap-2">
-                            <i class="bi bi-person-circle text-warning fs-6"></i>
-                            <div>
-                                <strong class="d-block leading-tight">{{ user.name }}</strong>
-                                <span class="badge {% if user.role == 'admin' %}bg-danger{% else %}bg-info text-dark{% endif %} font-mono fs-8 p-1">{{ user.role|upper }}</span>
-                            </div>
+                        <div class="bg-dark px-3 py-1 rounded border border-secondary text-white d-flex align-items-center gap-2">
+                            <i class="bi bi-person-circle text-warning"></i>
+                            <span>{{ user.name }}</span>
+                            <span class="badge {% if user.role == 'admin' %}bg-danger{% else %}bg-info{% endif %} text-white text-uppercase font-mono fs-8 ms-1">
+                                {{ user.role }}
+                            </span>
                         </div>
-                        <a href="/logout" class="btn btn-outline-secondary font-mono fs-7 text-white px-2 py-1" title="Log Out">
-                            <i class="bi bi-box-arrow-right me-1"></i> Log Out
-                        </a>
+                        {% if user.role == 'admin' %}
+                            <button id="adminBroadcastBtn" class="btn btn-outline-warning font-mono fs-7 fw-bold px-2 py-1" data-bs-toggle="modal" data-bs-target="#adminBroadcastModal">
+                                <i class="bi bi-megaphone-fill me-1"></i> Broadcast Alert
+                            </button>
+                        {% endif %}
+                        <a href="/logout" class="btn btn-sm btn-outline-secondary font-mono text-white p-1 px-2 text-decoration-none">Logout</a>
                     {% else %}
                         <a href="/login" class="btn btn-outline-warning font-mono fs-7 fw-bold px-3 py-1">
                             <i class="bi bi-person-badge-fill me-1"></i> Demo Login / Roles
                         </a>
                     {% endif %}
                 </div>
+
+                <!-- First Aid Guide Button -->
+                <button id="firstAidBtn" class="btn btn-outline-info font-mono fw-bold px-3 py-2 border border-info d-flex align-items-center gap-1" data-bs-toggle="modal" data-bs-target="#firstAidModal">
+                    <i class="bi bi-bandaid-fill text-info fs-6"></i>
+                    <span>🩹 First Aid</span>
+                </button>
+
+                <!-- Mark Myself Safe Button -->
+                <button id="markSafeBtn" class="btn btn-success font-mono fw-bold px-3 py-2 border border-light d-flex align-items-center gap-1" data-bs-toggle="modal" data-bs-target="#markSafeModal">
+                    <i class="bi bi-check-circle-fill text-white fs-6"></i>
+                    <span>✅ I'm Safe</span>
+                </button>
 
                 <!-- Public Emergency SOS Button -->
                 <button id="sosBtn" class="btn btn-danger font-mono fw-bold px-3 py-2 border border-warning d-flex align-items-center gap-2 btn-sos-pulse" data-bs-toggle="modal" data-bs-target="#sosModal">
@@ -657,9 +667,162 @@
         </div>
     </div>
 
+    <!-- MARK MYSELF SAFE MODAL -->
+    <div class="modal fade" id="markSafeModal" tabindex="-1" aria-labelledby="markSafeModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content glass-panel border-success text-white">
+                <div class="modal-header border-secondary bg-success bg-opacity-25">
+                    <h5 class="modal-title font-mono fw-bold text-white d-flex align-items-center gap-2" id="markSafeModalLabel">
+                        <i class="bi bi-shield-check text-success fs-4"></i> SAFETY CHECK-IN ("I'M SAFE")
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body p-4">
+                    <p class="fs-6 fw-bold text-success mb-1">Confirm Safety Status</p>
+                    <p class="fs-7 text-white mb-3">
+                        This sends a reassurance message to your emergency contact. No emergency team dispatch is triggered.
+                    </p>
+
+                    <div class="p-3 bg-dark rounded border border-secondary mb-3 font-mono fs-7">
+                        <strong class="text-success d-block mb-2"><i class="bi bi-person-check-fill me-1"></i> REASSURANCE CHECK-IN DETAILS</strong>
+                        <div class="row g-2">
+                            <div class="col-6">
+                                <label class="text-white fs-8">Your Name:</label>
+                                <input type="text" id="safeUserName" class="form-control form-control-sm bg-dark text-white border-secondary">
+                            </div>
+                            <div class="col-6">
+                                <label class="text-white fs-8">Emergency Contact Name:</label>
+                                <input type="text" id="safeContactName" class="form-control form-control-sm bg-dark text-white border-secondary">
+                            </div>
+                            <div class="col-12">
+                                <label class="text-white fs-8">Emergency Contact Phone:</label>
+                                <input type="tel" id="safeContactPhone" class="form-control form-control-sm bg-dark text-white border-secondary">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="markSafeStatusBox" class="p-3 rounded border font-mono fs-7 mb-3 d-none">
+                        <div id="markSafeStatusText" class="fw-bold mb-1"></div>
+                        <div id="markSafeStatusDetails" class="fs-8"></div>
+                    </div>
+                </div>
+                <div class="modal-footer border-secondary">
+                    <button type="button" class="btn btn-secondary font-mono fw-bold" data-bs-dismiss="modal">CANCEL</button>
+                    <button type="button" id="confirmMarkSafeBtn" class="btn btn-success font-mono fw-bold px-4">
+                        <i class="bi bi-check-circle-fill me-1"></i> MARK MYSELF SAFE
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- OFFLINE FIRST-AID & SURVIVAL GUIDE MODAL -->
+    <div class="modal fade" id="firstAidModal" tabindex="-1" aria-labelledby="firstAidModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-lg">
+            <div class="modal-content glass-panel border-info text-white">
+                <div class="modal-header border-secondary bg-info bg-opacity-25">
+                    <h5 class="modal-title font-mono fw-bold text-white d-flex align-items-center gap-2" id="firstAidModalLabel">
+                        <i class="bi bi-bandaid-fill text-info fs-4"></i> OFFLINE FIRST-AID & SURVIVAL GUIDE
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body p-4">
+                    <p class="fs-7 text-info font-mono mb-3"><i class="bi bi-wifi-off me-1"></i> 100% Offline Guide — Red Cross & WHO Standard Emergency Instructions</p>
+                    
+                    <!-- Tabs -->
+                    <ul class="nav nav-pills mb-3 font-mono fs-7 gap-2" id="firstAidTabs" role="tablist">
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link active bg-dark text-white border border-secondary" id="tab-categories" data-bs-toggle="tab" data-bs-target="#pane-categories" type="button" role="tab">
+                                <i class="bi bi-list-task me-1"></i> Medical Procedures
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link bg-dark text-white border border-secondary" id="tab-disasters" data-bs-toggle="tab" data-bs-target="#pane-disasters" type="button" role="tab">
+                                <i class="bi bi-shield-exclamation me-1"></i> Survival by Disaster Type
+                            </button>
+                        </li>
+                    </ul>
+
+                    <div class="tab-content" id="firstAidTabContent">
+                        <!-- Tab 1: Categories & Steps -->
+                        <div class="tab-pane fade show active" id="pane-categories" role="tabpanel">
+                            <div class="row g-2 mb-3" id="firstAidCategoryButtons"></div>
+                            <div id="firstAidStepsContainer" class="p-3 bg-dark rounded border border-secondary">
+                                <h6 class="text-warning font-mono fw-bold mb-2" id="firstAidSelectedTitle">Select a topic above</h6>
+                                <ol class="text-white font-mono fs-7 mb-0 ps-3" id="firstAidSelectedSteps"></ol>
+                            </div>
+                        </div>
+
+                        <!-- Tab 2: Survival by Disaster Type -->
+                        <div class="tab-pane fade" id="pane-disasters" role="tabpanel">
+                            <div id="firstAidDisasterTips" class="d-flex flex-column gap-3 font-mono fs-7"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer border-secondary">
+                    <button type="button" class="btn btn-secondary font-mono fw-bold" data-bs-dismiss="modal">CLOSE</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ADMIN BROADCAST ALERT MODAL -->
+    {% if user and user.role == 'admin' %}
+    <div class="modal fade" id="adminBroadcastModal" tabindex="-1" aria-labelledby="adminBroadcastModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content glass-panel border-warning text-white">
+                <div class="modal-header border-secondary bg-warning bg-opacity-25">
+                    <h5 class="modal-title font-mono fw-bold text-white d-flex align-items-center gap-2" id="adminBroadcastModalLabel">
+                        <i class="bi bi-megaphone-fill text-warning fs-4"></i> ADMIN ALERT BROADCAST
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body p-4 font-mono">
+                    <p class="fs-7 text-warning mb-3">Broadcast urgent emergency warnings fixed at the top of all user dashboards.</p>
+                    
+                    <div class="mb-3">
+                        <label class="form-label text-white fs-7 fw-bold">Alert Message Body:</label>
+                        <textarea id="broadcastMsgInput" class="form-control bg-dark text-white border-secondary fs-7" rows="3" placeholder="e.g. EVACUATION NOTICE: High water levels detected near Sector 4 causeway. Move to Central Shelter immediately."></textarea>
+                    </div>
+
+                    <div class="row g-2 mb-3">
+                        <div class="col-6">
+                            <label class="form-label text-white fs-7 fw-bold">Severity:</label>
+                            <select id="broadcastSeveritySelect" class="form-select form-select-sm bg-dark text-white border-secondary">
+                                <option value="critical">Critical (Red Pulsing)</option>
+                                <option value="warning" selected>Warning (Amber)</option>
+                                <option value="info">Info (Cyan)</option>
+                            </select>
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label text-white fs-7 fw-bold">Expires In (Minutes):</label>
+                            <input type="number" id="broadcastExpiresInput" class="form-control form-control-sm bg-dark text-white border-secondary" value="60">
+                        </div>
+                    </div>
+
+                    <button type="button" id="submitBroadcastBtn" class="btn btn-warning w-100 font-mono fw-bold mb-4">
+                        <i class="bi bi-broadcast me-1"></i> BROADCAST ALERT TO ALL USERS
+                    </button>
+
+                    <h6 class="text-warning fw-bold border-bottom border-secondary pb-1">Active Broadcasts:</h6>
+                    <div id="adminActiveAlertsList" class="d-flex flex-column gap-2 fs-7"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
     <!-- Scripts -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="{{ url_for('static', filename='js/firstaid_data.js') }}"></script>
     <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/static/js/sw.js').catch(err => console.warn('SW registration error:', err));
+            });
+        }
+    </script>
 </body>
 </html>

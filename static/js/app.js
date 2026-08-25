@@ -14,9 +14,16 @@ document.addEventListener('DOMContentLoaded', () => {
     applyRoleVisibility(userRole);
     initEventListeners();
 
+    // Features A2, B3, C3 initializations
+    initMarkSafe();
+    initFirstAidGuide();
+    pollActiveAlerts();
+    setInterval(pollActiveAlerts, 12000);
+
     if (userRole === 'admin') {
         pollAdminSosLog();
         setInterval(pollAdminSosLog, 15000);
+        initAdminBroadcast();
     }
 });
 
@@ -375,18 +382,57 @@ function renderDashboard(data) {
     const shelterList = document.getElementById('shelterList');
     shelterList.innerHTML = '';
     const shelters = data.evacuation_shelters || [];
-    shelters.forEach(s => {
+    shelters.forEach((s, idx) => {
         const item = document.createElement('div');
-        item.className = 'list-custom-item';
-        item.innerHTML = `
-            <i class="bi bi-house-door-fill text-warning"></i>
-            <div class="w-100">
-                <div class="d-flex justify-content-between">
-                    <strong style="color: #ffffff; font-size: 1.05rem;">${s.name}</strong>
-                    <span class="badge bg-success text-white font-mono">${s.status || 'Open'}</span>
+        item.className = 'list-custom-item flex-column align-items-start gap-2 mb-2 p-3 bg-dark rounded border border-secondary';
+        
+        const sLat = s.latitude || s.lat || 0;
+        const sLng = s.longitude || s.lng || 0;
+        const adminUpdatedBadge = s.admin_updated ? `<span class="badge bg-warning text-dark font-mono fs-8 ms-1"><i class="bi bi-person-gear me-1"></i> Admin Override</span>` : '';
+
+        let adminEditHtml = '';
+        if (userRole === 'admin') {
+            adminEditHtml = `
+                <div class="mt-2 pt-2 border-top border-secondary w-100 font-mono fs-8 d-none" id="shelterEditForm_${idx}">
+                    <div class="row g-2 align-items-center">
+                        <div class="col-5">
+                            <input type="text" id="editShelterStatus_${idx}" class="form-control form-control-sm bg-dark text-white border-secondary" value="${escapeHtml(s.status || 'Open')}">
+                        </div>
+                        <div class="col-5">
+                            <input type="text" id="editShelterCap_${idx}" class="form-control form-control-sm bg-dark text-white border-secondary" value="${escapeHtml(s.capacity || '1,000')}">
+                        </div>
+                        <div class="col-2">
+                            <button class="btn btn-sm btn-warning w-100 font-mono p-1 fs-8" onclick="submitShelterOverride('${escapeHtml(s.name)}', 'editShelterStatus_${idx}', 'editShelterCap_${idx}')">Save</button>
+                        </div>
+                    </div>
                 </div>
-                <div style="color: #FFC107; font-size: 0.85rem; font-weight: 600;">Capacity: ${s.capacity}</div>
+            `;
+        }
+
+        const adminEditToggleBtn = userRole === 'admin' ? `
+            <button class="btn btn-sm btn-outline-warning p-1 fs-8 font-mono" onclick="toggleShelterEditForm('${idx}')">
+                <i class="bi bi-pencil-square me-1"></i> Edit
+            </button>
+        ` : '';
+
+        item.innerHTML = `
+            <div class="d-flex justify-content-between align-items-center w-100">
+                <div class="d-flex align-items-center gap-2">
+                    <i class="bi bi-house-door-fill text-warning fs-5"></i>
+                    <div>
+                        <strong style="color: #ffffff; font-size: 1.05rem;">${escapeHtml(s.name)}</strong> ${adminUpdatedBadge}
+                        <div style="color: #FFC107; font-size: 0.85rem; font-weight: 600;">Capacity: ${escapeHtml(s.capacity)}</div>
+                    </div>
+                </div>
+                <div class="d-flex align-items-center gap-2">
+                    <span class="badge bg-success text-white font-mono fs-7">${escapeHtml(s.status || 'Open')}</span>
+                    ${adminEditToggleBtn}
+                    <button class="btn btn-sm btn-outline-info font-mono p-1 px-2 fs-8 text-nowrap" onclick="getDirectionsToShelter(${sLat}, ${sLng})">
+                        <i class="bi bi-sign-turn-right-fill text-info me-1"></i> Get Directions
+                    </button>
+                </div>
             </div>
+            ${adminEditHtml}
         `;
         shelterList.appendChild(item);
     });
@@ -1250,5 +1296,400 @@ function handleNearbyResult(data) {
         currentAnalysisData = data.data;
         sessionStorage.setItem('currentDisasterReport', JSON.stringify(currentAnalysisData));
         renderDashboard(currentAnalysisData);
+    }
+}
+
+/**
+ * Feature A1: Get Directions to Shelter
+ */
+function getDirectionsToShelter(shelterLat, shelterLng) {
+    if (!shelterLat || !shelterLng) {
+        alert('Shelter GPS coordinates unavailable.');
+        return;
+    }
+    if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+            (pos) => {
+                const { latitude, longitude } = pos.coords;
+                const url = `https://www.google.com/maps/dir/?api=1&origin=${latitude},${longitude}&destination=${shelterLat},${shelterLng}&travelmode=walking`;
+                window.open(url, '_blank');
+            },
+            () => {
+                window.open(`https://www.google.com/maps/search/?api=1&query=${shelterLat},${shelterLng}`, '_blank');
+            }
+        );
+    } else {
+        window.open(`https://www.google.com/maps/search/?api=1&query=${shelterLat},${shelterLng}`, '_blank');
+    }
+}
+
+/**
+ * Feature A3: Admin Shelter Override Handlers
+ */
+function toggleShelterEditForm(idx) {
+    const el = document.getElementById(`shelterEditForm_${idx}`);
+    if (el) {
+        el.classList.toggle('d-none');
+    }
+}
+
+async function submitShelterOverride(shelterName, statusInputId, capInputId) {
+    const statusInput = document.getElementById(statusInputId);
+    const capInput = document.getElementById(capInputId);
+
+    const status = statusInput ? statusInput.value.trim() : '';
+    const capacity = capInput ? capInput.value.trim() : '';
+
+    if (!status || !capacity) {
+        alert('Both status and capacity are required.');
+        return;
+    }
+
+    try {
+        const encodedName = encodeURIComponent(shelterName);
+        const resp = await fetch(`/api/shelters/${encodedName}/override`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ status, capacity })
+        });
+        const data = await resp.json();
+        if (data.status === 'success') {
+            alert(`Shelter '${shelterName}' override updated.`);
+            if (currentAnalysisData) {
+                (currentAnalysisData.evacuation_shelters || []).forEach(s => {
+                    if (s.name === shelterName) {
+                        s.status = status;
+                        s.capacity = capacity;
+                        s.admin_updated = true;
+                    }
+                });
+                renderDashboard(currentAnalysisData);
+            }
+        } else {
+            alert('Failed to update shelter: ' + (data.message || 'Error'));
+        }
+    } catch (e) {
+        console.error('Shelter override error:', e);
+        alert('Server connection error during shelter update.');
+    }
+}
+
+/**
+ * Feature A2: Mark Myself Safe Handler
+ */
+function initMarkSafe() {
+    const confirmBtn = document.getElementById('confirmMarkSafeBtn');
+    const nameInput = document.getElementById('safeUserName');
+    const contactNameInput = document.getElementById('safeContactName');
+    const contactPhoneInput = document.getElementById('safeContactPhone');
+    const statusBox = document.getElementById('markSafeStatusBox');
+    const statusText = document.getElementById('markSafeStatusText');
+    const statusDetails = document.getElementById('markSafeStatusDetails');
+
+    // Pre-fill from localStorage if available
+    try {
+        const savedInfo = localStorage.getItem('sos_user_info');
+        if (savedInfo) {
+            const parsed = JSON.parse(savedInfo);
+            if (nameInput && parsed.name) nameInput.value = parsed.name;
+            if (contactNameInput && parsed.contactName) contactNameInput.value = parsed.contactName;
+            if (contactPhoneInput && parsed.contactPhone) contactPhoneInput.value = parsed.contactPhone;
+        }
+    } catch (e) {}
+
+    if (!confirmBtn) return;
+
+    confirmBtn.addEventListener('click', async () => {
+        const name = nameInput ? nameInput.value.trim() : 'Registered User';
+        const contactName = contactNameInput ? contactNameInput.value.trim() : 'Emergency Contact';
+        const contactPhone = contactPhoneInput ? contactPhoneInput.value.trim() : 'Not Provided';
+        const timestamp = new Date().toLocaleString();
+
+        confirmBtn.disabled = true;
+        if (statusBox) statusBox.classList.remove('d-none');
+        if (statusBox) statusBox.className = 'p-3 rounded border font-mono fs-7 mb-3 bg-dark border-success text-success';
+        if (statusText) statusText.innerHTML = '<i class="bi bi-arrow-repeat spin me-1"></i> Transmitting safety check-in...';
+
+        try {
+            const response = await fetch('/api/mark-safe', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    name,
+                    emergency_contact_name: contactName,
+                    emergency_contact_phone: contactPhone,
+                    timestamp
+                })
+            });
+
+            const data = await response.json();
+            confirmBtn.disabled = false;
+
+            if (data.status === 'success') {
+                if (statusBox) statusBox.className = 'p-3 rounded border font-mono fs-7 mb-3 bg-success bg-opacity-25 border-success text-white';
+                if (statusText) statusText.innerHTML = '✅ SAFETY CHECK-IN SENT';
+                if (statusDetails) statusDetails.innerHTML = `Reassurance message delivered to ${escapeHtml(contactName)} (${escapeHtml(contactPhone)}).`;
+            } else if (data.status === 'notification_not_configured') {
+                if (statusBox) statusBox.className = 'p-3 rounded border font-mono fs-7 mb-3 bg-warning bg-opacity-25 border-warning text-white';
+                if (statusText) statusText.innerHTML = '✅ SAFETY CHECK-IN RECORDED';
+                if (statusDetails) statusDetails.innerHTML = `Check-in recorded locally. Webhook notification channel is not configured in backend .env.`;
+            } else {
+                if (statusBox) statusBox.className = 'p-3 rounded border font-mono fs-7 mb-3 bg-danger bg-opacity-25 border-danger text-white';
+                if (statusText) statusText.innerHTML = '⚠️ CHECK-IN TRANSMISSION FAILED';
+                if (statusDetails) statusDetails.innerHTML = escapeHtml(data.message || 'Server error.');
+            }
+
+        } catch (err) {
+            confirmBtn.disabled = false;
+            console.error('Mark safe fetch error:', err);
+            if (statusBox) statusBox.className = 'p-3 rounded border font-mono fs-7 mb-3 bg-danger bg-opacity-25 border-danger text-white';
+            if (statusText) statusText.innerHTML = '⚠️ TRANSMISSION ERROR';
+            if (statusDetails) statusDetails.innerHTML = 'Network failure or server unavailable.';
+        }
+    });
+}
+
+/**
+ * Feature B3: Offline First-Aid & Survival Guide Renderer
+ */
+function initFirstAidGuide() {
+    const categoryContainer = document.getElementById('firstAidCategoryButtons');
+    const stepsTitle = document.getElementById('firstAidSelectedTitle');
+    const stepsList = document.getElementById('firstAidSelectedSteps');
+    const disasterTipsContainer = document.getElementById('firstAidDisasterTips');
+
+    if (typeof FIRST_AID_GUIDE === 'undefined') return;
+
+    // Render Medical Category Buttons
+    if (categoryContainer && FIRST_AID_GUIDE.categories) {
+        categoryContainer.innerHTML = '';
+        FIRST_AID_GUIDE.categories.forEach((cat, idx) => {
+            const col = document.createElement('div');
+            col.className = 'col-6 col-md-3';
+            col.innerHTML = `
+                <button class="btn btn-outline-warning w-100 font-mono fs-8 p-2 text-start d-flex align-items-center gap-2 ${idx === 0 ? 'active' : ''}" onclick="selectFirstAidCategory('${cat.id}')">
+                    <i class="bi ${cat.icon || 'bi-bandaid'} fs-5"></i>
+                    <span>${cat.label}</span>
+                </button>
+            `;
+            categoryContainer.appendChild(col);
+        });
+
+        // Select first category by default
+        if (FIRST_AID_GUIDE.categories.length > 0) {
+            selectFirstAidCategory(FIRST_AID_GUIDE.categories[0].id);
+        }
+    }
+
+    // Render Disaster Survival Tips
+    if (disasterTipsContainer && FIRST_AID_GUIDE.by_disaster) {
+        disasterTipsContainer.innerHTML = '';
+        Object.keys(FIRST_AID_GUIDE.by_disaster).forEach(key => {
+            const tips = FIRST_AID_GUIDE.by_disaster[key];
+            const title = key.replace(/_/g, ' ').toUpperCase();
+            
+            const card = document.createElement('div');
+            card.className = 'p-3 bg-dark rounded border border-secondary';
+            card.innerHTML = `
+                <strong class="text-warning d-block mb-2"><i class="bi bi-shield-fill-exclamation text-warning me-1"></i> ${title} SURVIVAL TIPS</strong>
+                <ul class="mb-0 text-white ps-3">
+                    ${tips.map(t => `<li class="mb-1">${escapeHtml(t)}</li>`).join('')}
+                </ul>
+            `;
+            disasterTipsContainer.appendChild(card);
+        });
+    }
+}
+
+function selectFirstAidCategory(catId) {
+    if (typeof FIRST_AID_GUIDE === 'undefined') return;
+    const cat = FIRST_AID_GUIDE.categories.find(c => c.id === catId);
+    if (!cat) return;
+
+    const stepsTitle = document.getElementById('firstAidSelectedTitle');
+    const stepsList = document.getElementById('firstAidSelectedSteps');
+
+    if (stepsTitle) stepsTitle.textContent = `${cat.label} — Emergency Step-by-Step Procedure:`;
+    if (stepsList) {
+        stepsList.innerHTML = cat.steps.map(s => `<li class="mb-2">${escapeHtml(s)}</li>`).join('');
+    }
+}
+
+/**
+ * Feature C3: Admin Broadcast Alert Polling & Banner Display
+ */
+async function pollActiveAlerts() {
+    try {
+        const response = await fetch('/api/alerts/active');
+        if (!response.ok) return;
+
+        const data = await response.json();
+        if (data.status === 'success' && Array.isArray(data.alerts)) {
+            renderBroadcastAlerts(data.alerts);
+        }
+    } catch (e) {
+        console.warn('Active alerts polling error:', e);
+    }
+}
+
+function renderBroadcastAlerts(alerts) {
+    const container = document.getElementById('broadcastAlertsContainer');
+    if (!container) return;
+
+    // Filter out dismissed alerts for this browser session
+    const dismissedIds = JSON.parse(sessionStorage.getItem('dismissed_alert_ids') || '[]');
+    const visibleAlerts = alerts.filter(a => !dismissedIds.includes(a.id));
+
+    if (visibleAlerts.length === 0) {
+        container.classList.add('d-none');
+        container.innerHTML = '';
+        return;
+    }
+
+    container.classList.remove('d-none');
+    container.innerHTML = '';
+
+    visibleAlerts.forEach(alert => {
+        const banner = document.createElement('div');
+        let bgClass = 'bg-info text-dark border-cyan';
+        let pulseClass = '';
+        let iconClass = 'bi-info-circle-fill';
+
+        if (alert.severity === 'critical') {
+            bgClass = 'bg-danger text-white border-warning';
+            pulseClass = 'btn-sos-pulse';
+            iconClass = 'bi-exclamation-triangle-fill text-warning';
+        } else if (alert.severity === 'warning') {
+            bgClass = 'bg-warning text-dark border-dark';
+            iconClass = 'bi-exclamation-octagon-fill';
+        }
+
+        banner.className = `alert alert-dismissible fade show font-mono shadow-lg mb-2 p-3 border border-2 rounded ${bgClass} ${pulseClass}`;
+        banner.style.fontSize = '0.95rem';
+
+        banner.innerHTML = `
+            <div class="d-flex align-items-center justify-content-between">
+                <div class="d-flex align-items-center gap-2">
+                    <i class="bi ${iconClass} fs-4"></i>
+                    <div>
+                        <strong class="d-block text-uppercase" style="letter-spacing: 0.05em;">🚨 EOC OFFICIAL BROADCAST #${alert.id}</strong>
+                        <span>${escapeHtml(alert.message)}</span>
+                    </div>
+                </div>
+                <button type="button" class="btn-close ms-3" onclick="dismissAlert(${alert.id})" aria-label="Close"></button>
+            </div>
+        `;
+        container.appendChild(banner);
+    });
+}
+
+function dismissAlert(alertId) {
+    const dismissedIds = JSON.parse(sessionStorage.getItem('dismissed_alert_ids') || '[]');
+    if (!dismissedIds.includes(alertId)) {
+        dismissedIds.push(alertId);
+        sessionStorage.setItem('dismissed_alert_ids', JSON.stringify(dismissedIds));
+    }
+    pollActiveAlerts();
+}
+
+/**
+ * Feature C3: Admin Broadcast Management UI
+ */
+function initAdminBroadcast() {
+    const submitBtn = document.getElementById('submitBroadcastBtn');
+    const msgInput = document.getElementById('broadcastMsgInput');
+    const sevSelect = document.getElementById('broadcastSeveritySelect');
+    const expInput = document.getElementById('broadcastExpiresInput');
+
+    if (submitBtn) {
+        submitBtn.addEventListener('click', async () => {
+            const message = msgInput ? msgInput.value.trim() : '';
+            const severity = sevSelect ? sevSelect.value : 'warning';
+            const expires_in_minutes = expInput ? parseInt(expInput.value) || 60 : 60;
+
+            if (!message) {
+                alert('Please enter an alert message body.');
+                return;
+            }
+
+            try {
+                const resp = await fetch('/api/alerts', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ message, severity, expires_in_minutes })
+                });
+                const data = await resp.json();
+                if (data.status === 'success') {
+                    if (msgInput) msgInput.value = '';
+                    pollActiveAlerts();
+                    fetchAdminAlertsList();
+                    alert('Broadcast alert transmitted live to all connected users!');
+                } else {
+                    alert('Failed to broadcast alert: ' + (data.message || 'Error'));
+                }
+            } catch (e) {
+                console.error('Broadcast error:', e);
+                alert('Server connection error during alert broadcast.');
+            }
+        });
+
+        fetchAdminAlertsList();
+    }
+}
+
+async function fetchAdminAlertsList() {
+    const container = document.getElementById('adminActiveAlertsList');
+    if (!container) return;
+
+    try {
+        const resp = await fetch('/api/alerts/all');
+        if (!resp.ok) return;
+
+        const data = await resp.json();
+        if (data.status === 'success' && Array.isArray(data.alerts)) {
+            container.innerHTML = '';
+            if (data.alerts.length === 0) {
+                container.innerHTML = '<span class="text-secondary">No active or previous broadcast alerts.</span>';
+                return;
+            }
+
+            data.alerts.forEach(a => {
+                const d = document.createElement('div');
+                d.className = 'p-2 bg-dark rounded border border-secondary d-flex justify-content-between align-items-center';
+                
+                const statusBadge = a.retracted ?
+                    '<span class="badge bg-secondary">Retracted</span>' :
+                    '<span class="badge bg-success">Active</span>';
+
+                d.innerHTML = `
+                    <div>
+                        <strong class="text-warning">#${a.id} [${a.severity.toUpperCase()}]</strong>
+                        <span class="text-white ms-1">${escapeHtml(a.message)}</span>
+                        ${statusBadge}
+                    </div>
+                    ${!a.retracted ? `<button class="btn btn-sm btn-outline-danger p-1 fs-8 font-mono ms-2 text-nowrap" onclick="retractAlert(${a.id})">Retract</button>` : ''}
+                `;
+                container.appendChild(d);
+            });
+        }
+    } catch (e) {
+        console.warn('Error fetching admin alerts list:', e);
+    }
+}
+
+async function retractAlert(alertId) {
+    try {
+        const resp = await fetch(`/api/alerts/${alertId}/retract`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' }
+        });
+        if (resp.ok) {
+            pollActiveAlerts();
+            fetchAdminAlertsList();
+        } else {
+            alert('Failed to retract alert.');
+        }
+    } catch (e) {
+        console.error('Error retracting alert:', e);
     }
 }

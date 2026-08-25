@@ -9,6 +9,8 @@ from agents.report_agent import ReportAgent
 from auth_store import authenticate
 from sos_store import log_sos_event, list_sos_log, mark_sos_reviewed
 from gdacs_client import find_nearby_disasters
+from shelter_overrides import set_shelter_override, apply_shelter_overrides
+from alerts_store import add_alert, list_active_alerts, list_all_alerts, retract_alert
 
 # Configure Logging
 logging.basicConfig(
@@ -145,6 +147,8 @@ def analyze_disaster():
         
         # Execute LangChain Disaster Agent Workflow
         result_json = disaster_agent.analyze_disaster(query)
+        if "evacuation_shelters" in result_json and isinstance(result_json["evacuation_shelters"], list):
+            result_json["evacuation_shelters"] = apply_shelter_overrides(result_json["evacuation_shelters"])
 
         # Apply role-based field filtering before sending to client
         current_user = session.get("user")
@@ -219,6 +223,8 @@ def nearby_disaster():
         
         # Execute live analysis pipeline
         result_json = disaster_agent.analyze_disaster(query)
+        if "evacuation_shelters" in result_json and isinstance(result_json["evacuation_shelters"], list):
+            result_json["evacuation_shelters"] = apply_shelter_overrides(result_json["evacuation_shelters"])
         
         # Attach GDACS verification metadata
         result_json["gdacs_verified"] = True
@@ -465,6 +471,150 @@ def update_sos_reviewed(sos_id: int):
             "status": "error",
             "message": f"SOS record #{sos_id} not found."
         }), 404
+
+
+@app.route("/api/mark-safe", methods=["POST"])
+def mark_safe():
+    """
+    Public Safety Check-In Endpoint.
+    Reuses existing emergency contact & n8n webhook infrastructure to send a reassurance message.
+    """
+    try:
+        data = request.get_json(silent=True) or {}
+        name = str(data.get("name", "")).strip() or "Registered User"
+        contact_name = str(data.get("emergency_contact_name", "")).strip() or "Emergency Contact"
+        contact_phone = str(data.get("emergency_contact_phone", "")).strip() or "Not Provided"
+        timestamp = str(data.get("timestamp", "")).strip() or "Current Time"
+
+        reassurance_msg = (
+            f"✅ SAFETY CHECK-IN\n\n{name} has marked themselves as SAFE.\n\n"
+            f"Time: {timestamp}\n\nNo action needed — this is a reassurance message, not an alert."
+        )
+
+        webhook_url = Config.N8N_SOS_WEBHOOK_URL
+        delivered = False
+        delivery_status = "notification_not_configured"
+
+        if webhook_url:
+            try:
+                wb_resp = requests.post(
+                    webhook_url,
+                    json={
+                        "event_type": "MARK_SAFE",
+                        "name": name,
+                        "emergency_contact_name": contact_name,
+                        "emergency_contact_phone": contact_phone,
+                        "message": reassurance_msg,
+                        "timestamp": timestamp
+                    },
+                    headers={"Content-Type": "application/json"},
+                    timeout=5
+                )
+                if wb_resp.status_code in [200, 201, 202]:
+                    delivered = True
+                    delivery_status = "success"
+                else:
+                    delivery_status = f"error_{wb_resp.status_code}"
+            except Exception as w_err:
+                logger.error(f"Mark-safe n8n webhook error: {w_err}")
+                delivery_status = f"error_{str(w_err)}"
+
+        return jsonify({
+            "status": "success" if delivered else ("notification_not_configured" if delivery_status == "notification_not_configured" else "error"),
+            "message": "Safety check-in recorded and transmitted.",
+            "delivery_status": delivery_status,
+            "reassurance": reassurance_msg
+        }), 200
+
+    except Exception as e:
+        logger.error(f"Error in /api/mark-safe: {e}", exc_info=True)
+        return jsonify({"status": "error", "message": f"Safety check-in failed: {str(e)}"}), 500
+
+
+@app.route("/api/shelters/<path:shelter_name>/override", methods=["PATCH"])
+@role_required("admin")
+def update_shelter_override(shelter_name: str):
+    """
+    Admin-only inline shelter capacity and status override.
+    """
+    try:
+        data = request.get_json(silent=True) or {}
+        status = str(data.get("status", "")).strip()
+        capacity = str(data.get("capacity", "")).strip()
+
+        if not status or not capacity:
+            return jsonify({"status": "error", "message": "Both status and capacity fields are required."}), 400
+
+        override = set_shelter_override(shelter_name, status, capacity)
+        return jsonify({
+            "status": "success",
+            "shelter_name": shelter_name,
+            "override": override
+        }), 200
+    except Exception as e:
+        logger.error(f"Error overriding shelter '{shelter_name}': {e}")
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+
+@app.route("/api/alerts", methods=["POST"])
+@role_required("admin")
+def create_alert():
+    """
+    Admin-only broadcast alert creation.
+    """
+    try:
+        data = request.get_json(silent=True) or {}
+        msg = str(data.get("message", "")).strip()
+        sev = str(data.get("severity", "info")).strip().lower()
+        expires = int(data.get("expires_in_minutes", 60))
+
+        if not msg:
+            return jsonify({"status": "error", "message": "Alert message body is required."}), 400
+
+        if sev not in ["critical", "warning", "info"]:
+            sev = "info"
+
+        alert = add_alert(msg, sev, expires)
+        return jsonify({"status": "success", "alert": alert}), 201
+    except Exception as e:
+        logger.error(f"Error creating broadcast alert: {e}")
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+
+@app.route("/api/alerts/active", methods=["GET"])
+def active_alerts():
+    """
+    Public broadcast alerts endpoint — checked by all clients every 10-15s.
+    """
+    return jsonify({
+        "status": "success",
+        "alerts": list_active_alerts()
+    }), 200
+
+
+@app.route("/api/alerts/all", methods=["GET"])
+@role_required("admin")
+def all_alerts():
+    """
+    Admin endpoint to view all alerts (active, expired, retracted).
+    """
+    return jsonify({
+        "status": "success",
+        "alerts": list_all_alerts()
+    }), 200
+
+
+@app.route("/api/alerts/<int:alert_id>/retract", methods=["PATCH"])
+@role_required("admin")
+def retract(alert_id: int):
+    """
+    Admin-only alert retraction endpoint.
+    """
+    ok = retract_alert(alert_id)
+    if ok:
+        return jsonify({"status": "success", "retracted": True, "alert_id": alert_id}), 200
+    else:
+        return jsonify({"status": "error", "message": f"Alert #{alert_id} not found."}), 404
 
 
 if __name__ == "__main__":
