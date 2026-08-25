@@ -1333,6 +1333,7 @@ function handleNearbyLookupResult(data) {
             const query = pill.getAttribute('data-query');
             if (queryInput) {
                 queryInput.value = query;
+                performAnalysis();
             }
         });
     });
