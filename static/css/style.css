@@ -117,61 +117,103 @@ h1, h2, h3, h4, h5, h6, .brand-text {
 
 /* Search Bar */
 .search-box-container {
-  max-width: 820px;
+.search-box-container {
+  max-width: 960px;
   margin: 0 auto;
 }
 
-.search-input-group {
+.search-input-wrapper {
+  border-radius: 18px;
+  border: 1px solid var(--border-contrast);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6);
+}
+
+.search-field-container {
   position: relative;
   display: flex;
   align-items: center;
+  width: 100%;
 }
 
 .search-input {
-  background: #1a1a1a;
-  border: 2px solid var(--border-contrast);
+  background: #121212;
+  border: 1px solid rgba(255, 255, 255, 0.15);
   color: #ffffff;
-  border-radius: 14px;
-  padding: 1.15rem 1.25rem 1.15rem 3.5rem;
-  font-size: 1.2rem;
+  border-radius: 12px;
+  padding: 0.85rem 1rem 0.85rem 3.25rem;
+  font-size: 1.1rem;
   font-weight: 600;
   width: 100%;
+  height: 52px;
   transition: all 0.3s ease;
 }
 
 .search-input:focus {
   outline: none;
-  background: #111111;
+  background: #0a0a0a;
   border-color: var(--accent-yellow);
-  box-shadow: 0 0 25px rgba(255, 193, 7, 0.35);
+  box-shadow: 0 0 20px rgba(255, 193, 7, 0.3);
   color: #ffffff;
 }
 
 .search-icon-inside {
   position: absolute;
-  left: 1.25rem;
-  font-size: 1.5rem;
+  left: 1.1rem;
+  font-size: 1.35rem;
   color: var(--accent-yellow);
   pointer-events: none;
+  z-index: 2;
 }
 
 .btn-analyze {
   background: var(--primary-red);
   color: #ffffff;
   font-weight: 800;
-  font-size: 1.15rem;
-  padding: 1rem 2.25rem;
-  border-radius: 14px;
+  font-size: 1rem;
+  padding: 0 1.5rem;
+  height: 52px;
+  border-radius: 12px;
   border: none;
   cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   transition: all 0.25s ease;
-  box-shadow: 0 4px 20px rgba(178, 34, 34, 0.5);
+  box-shadow: 0 4px 15px rgba(178, 34, 34, 0.5);
 }
 
 .btn-analyze:hover {
   background: #d32f2f;
   transform: translateY(-2px);
-  box-shadow: 0 8px 25px rgba(211, 47, 47, 0.7);
+  box-shadow: 0 6px 20px rgba(211, 47, 47, 0.7);
+}
+
+.btn-detect-nearby {
+  background: rgba(255, 193, 7, 0.1);
+  color: var(--accent-yellow);
+  border: 1px solid var(--accent-yellow);
+  font-weight: 700;
+  font-size: 1rem;
+  padding: 0 1.35rem;
+  height: 52px;
+  border-radius: 12px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.25s ease;
+  font-family: var(--font-mono);
+}
+
+.btn-detect-nearby:hover {
+  background: var(--accent-yellow);
+  color: #000000;
+  box-shadow: 0 4px 18px rgba(255, 193, 7, 0.4);
+  transform: translateY(-2px);
+}
+
+.btn-detect-nearby:hover i {
+  color: #000000 !important;
 }
 
 /* Scenario Pills */
