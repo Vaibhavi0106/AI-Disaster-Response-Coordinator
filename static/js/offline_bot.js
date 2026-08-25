@@ -1,5 +1,5 @@
 /**
- * Offline AI Survival Assistant (Transformers.js SmolLM2-360M-Instruct)
+ * Offline AI Survival Assistant (Transformers.js Qwen2.5-0.5B-Instruct)
  * 100% Client-Side In-Browser Inference Grounded on Verified FIRST_AID_GUIDE Data
  */
 
