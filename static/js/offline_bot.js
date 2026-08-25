@@ -3,7 +3,7 @@
  * 100% Client-Side In-Browser Inference Grounded on Verified FIRST_AID_GUIDE Data
  */
 
-const MODEL_ID = 'onnx-community/SmolLM2-360M-Instruct';
+const MODEL_ID = 'onnx-community/Qwen2.5-0.5B-Instruct';
 let generator = null;
 
 /**
