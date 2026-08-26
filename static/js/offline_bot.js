@@ -3,7 +3,7 @@
  * 100% Client-Side In-Browser Inference Grounded on Verified FIRST_AID_GUIDE Data
  */
 
-const MODEL_ID = 'onnx-community/Qwen2.5-0.5B-Instruct';
+const MODEL_ID = 'qwen2.5-0.5b-instruct';
 let generator = null;
 
 /**
@@ -12,6 +12,12 @@ let generator = null;
 async function prepareOfflineAssistant(onProgress) {
     if (!window.__transformersPipeline) {
         throw new Error('Transformers.js library CDN script has not loaded yet.');
+    }
+
+    if (window.__transformersEnv) {
+        window.__transformersEnv.allowLocalModels = true;
+        window.__transformersEnv.allowRemoteModels = false;
+        window.__transformersEnv.localModelPath = '/static/models/';
     }
 
     // Graceful hardware detection (WebGPU preferred, WASM fallback)
@@ -72,6 +78,17 @@ function retrieveRelevantEntries(userQuestion, maxResults = 2) {
         }
     }
 
+    // Search Survival Skills
+    if (Array.isArray(FIRST_AID_GUIDE.survival_skills)) {
+        for (const skill of FIRST_AID_GUIDE.survival_skills) {
+            const haystack = (skill.label + ' ' + (skill.steps || []).join(' ')).toLowerCase();
+            const score = terms.reduce((s, t) => s + (haystack.includes(t) ? 1 : 0), 0);
+            if (score > 0) {
+                scored.push({ label: skill.label, steps: skill.steps || [], score });
+            }
+        }
+    }
+
     return scored.sort((a, b) => b.score - a.score).slice(0, maxResults);
 }
 
@@ -97,7 +114,7 @@ async function askOfflineAssistant(userQuestion) {
     try {
         const context = matches.map(m => `${m.label}: ${m.steps.join(' ')}`).join('\n');
         const systemPrompt =
-            "You are an offline emergency first-aid assistant. ONLY use the reference " +
+            "You are an offline emergency survival and first-aid assistant. ONLY use the reference " +
             "information given below to answer. Do not add steps, dosages, or medical " +
             "details that are not in the reference. Keep the answer short and calm. If the " +
             "reference doesn't fully cover the question, say so plainly and recommend " +
@@ -176,7 +193,7 @@ function initOfflineBotUI() {
             prepareBtn.disabled = true;
             if (downloadBox) downloadBox.classList.remove('d-none');
             if (progressContainer) progressContainer.classList.remove('d-none');
-            if (progressText) progressText.textContent = 'Connecting to Hugging Face CDN...';
+            if (progressText) progressText.textContent = 'Loading local AI model...';
 
             try {
                 await prepareOfflineAssistant((percent, file) => {

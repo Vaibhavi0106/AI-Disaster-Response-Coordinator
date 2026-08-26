@@ -836,7 +836,7 @@
     {% if not (user and user.role == 'admin') %}
     <button id="firstAidFab" class="btn btn-dark border border-info text-info font-mono fw-bold px-3 py-2 rounded-pill shadow-lg d-flex align-items-center gap-2 position-fixed bottom-0 start-50 translate-middle-x mb-4" style="z-index: 1040; background: rgba(15, 23, 42, 0.95); backdrop-filter: blur(8px);" data-bs-toggle="modal" data-bs-target="#firstAidModal">
         <i class="bi bi-bandaid-fill text-info fs-5"></i>
-        <span>🩹 First Aid Guide</span>
+        <span>🧭 Survival & First Aid Assistant</span>
     </button>
     {% endif %}
 
@@ -853,7 +853,7 @@
             <div class="d-flex align-items-center gap-2">
                 <i class="bi bi-robot text-info fs-5"></i>
                 <div>
-                    <strong class="text-white font-mono fs-7 d-block">OFFLINE AI ASSISTANT</strong>
+                    <strong class="text-white font-mono fs-7 d-block">SURVIVAL & FIRST AID ASSISTANT</strong>
                     <small class="text-info font-mono fs-8">In-Browser Grounded Inference</small>
                 </div>
             </div>
@@ -895,7 +895,7 @@
         <div id="offlineChatMessages" class="offline-bot-body font-mono fs-7">
             <div class="offline-bot-msg msg-ai p-2 rounded bg-secondary bg-opacity-25 text-white border border-secondary">
                 <strong class="text-info d-block fs-8"><i class="bi bi-robot me-1"></i> Emergency AI Assistant:</strong>
-                Hello! Ask me any medical or first-aid question. I will provide grounded answers from verified Red Cross / WHO procedures.
+                Hello! Ask me any survival or first-aid question. I will provide grounded answers from verified procedures.
                 <div class="mt-1 text-warning fs-8 border-top border-secondary pt-1">
                     ⚠️ Offline assistant — for a real emergency, use SOS or call the hotlines above.
                 </div>
@@ -910,11 +910,15 @@
             <span class="offline-bot-chip" data-question="How to handle a fracture?">Fracture First-Aid</span>
             <span class="offline-bot-chip" data-question="What to do during a flood?">Flood Survival</span>
             <span class="offline-bot-chip" data-question="Earthquake survival tips">Earthquake Safety</span>
+            <span class="offline-bot-chip" data-question="How do I start a fire safely?">Start Fire Safely</span>
+            <span class="offline-bot-chip" data-question="How do I purify water?">Purify Water</span>
+            <span class="offline-bot-chip" data-question="How do I signal for rescue?">Signal for Rescue</span>
+            <span class="offline-bot-chip" data-question="What do I do in extreme heat/cold?">Extreme Heat/Cold</span>
         </div>
 
         <!-- Footer Input Form -->
         <div class="offline-bot-footer">
-            <input type="text" id="offlineChatInput" class="offline-bot-input font-mono fs-7" placeholder="Ask a first-aid question..." autocomplete="off">
+            <input type="text" id="offlineChatInput" class="offline-bot-input font-mono fs-7" placeholder="Ask a survival or first-aid question..." autocomplete="off">
             <button id="offlineChatSendBtn" class="offline-bot-send-btn">
                 <i class="bi bi-send-fill"></i>
             </button>
@@ -934,8 +938,12 @@
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <!-- Transformers.js (CDN Module) -->
     <script type="module">
-        import { pipeline, TextStreamer } from 'https://cdn.jsdelivr.net/npm/@huggingface/transformers@latest';
+        import { pipeline, env, TextStreamer } from 'https://cdn.jsdelivr.net/npm/@huggingface/transformers@latest';
+        env.allowLocalModels = true;            // enable loading from local folder
+        env.allowRemoteModels = false;          // hard-block any request to huggingface.co
+        env.localModelPath = '/static/models/'; // resolve from our own Flask static folder
         window.__transformersPipeline = pipeline;
+        window.__transformersEnv = env;
         window.__transformersStreamer = TextStreamer;
     </script>
     <script src="{{ url_for('static', filename='js/firstaid_data.js') }}"></script>

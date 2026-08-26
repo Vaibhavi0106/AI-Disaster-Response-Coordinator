@@ -133,5 +133,69 @@ const FIRST_AID_GUIDE = {
             "Do NOT enter damaged buildings until inspected and cleared by civil defense engineers.",
             "Use flashlights instead of open matches/lighters — undetected gas leaks pose immediate explosion risks."
         ]
-    }
+    },
+    survival_skills: [
+        {
+            label: "Starting a Fire Safely",
+            steps: [
+                "Choose a spot away from tents, dry grass, overhanging branches, and wind gusts; clear a ring down to bare soil if possible.",
+                "Gather three sizes of material: tinder (dry grass, bark shavings, cotton), kindling (pencil-thin dry twigs), and fuel wood (finger- to wrist-thick branches).",
+                "Build a small teepee or lean-to of kindling over a tinder bundle before lighting.",
+                "Light the tinder at its base so flames climb upward into the kindling.",
+                "Add fuel wood gradually once kindling is burning steadily — adding too much too soon smothers a young fire.",
+                "Never use fuel/accelerants on an open flame. Keep water or dirt nearby to extinguish quickly.",
+                "Fully extinguish before leaving: douse with water, stir ashes, douse again until cold to the touch."
+            ]
+        },
+        {
+            label: "Finding and Purifying Water",
+            steps: [
+                "Never drink untreated water from rivers, lakes, or floodwater — even if it looks clean.",
+                "Boiling is the most reliable method: bring to a rolling boil for at least 1 minute (3 minutes above 2000m altitude).",
+                "If boiling isn't possible, use water purification tablets per their instructions, or a rated portable filter (most fabric/cloth filtering alone does NOT remove pathogens).",
+                "Let sediment settle and pre-filter through cloth before treating, to help purification work effectively.",
+                "In a flood, water may also carry chemical contamination — treatment methods above do not remove chemical pollutants, only biological ones."
+            ]
+        },
+        {
+            label: "Emergency Shelter Basics",
+            steps: [
+                "Priority order: stop heat/cold loss first — get off wet ground and out of wind before worrying about anything elaborate.",
+                "Insulate from the ground with leaves, branches, or a mat — you lose heat faster to cold ground than to cold air.",
+                "A simple lean-to (a angled roof of branches/tarp against a fixed support) blocks wind and precipitation with minimal effort.",
+                "Keep shelter small — less air space is easier for body heat to warm.",
+                "In extreme heat, prioritize shade and airflow over enclosure; avoid direct sun during peak hours."
+            ]
+        },
+        {
+            label: "Signaling for Rescue",
+            steps: [
+                "The universal distress signal is three of anything: three whistle blasts, three fires/smoke columns, three flashes of light, spaced evenly.",
+                "A signal mirror or any reflective surface aimed at aircraft/search vehicles is visible from very long distances in daylight.",
+                "Bright clothing or ground markings (large X or SOS shapes made from rocks, logs, or trampled vegetation) are visible from the air.",
+                "Stay near your last known location if you're lost and searchers know roughly where to look — moving further can make you harder to find.",
+                "Conserve phone battery for periodic check-ins rather than continuous use if signal is weak."
+            ]
+        },
+        {
+            label: "Extreme Heat Safety",
+            steps: [
+                "Move to shade or air conditioning immediately at the first sign of heat exhaustion (heavy sweating, weakness, nausea, cool clammy skin).",
+                "Sip water steadily — don't gulp large amounts at once.",
+                "Heat stroke (hot dry skin, confusion, very high body temperature, no sweating) is a medical emergency — cool the person immediately with any available water/ice and call emergency services.",
+                "Avoid strenuous activity during peak heat hours; loose, light-colored clothing helps."
+            ]
+        },
+        {
+            label: "Extreme Cold Safety",
+            steps: [
+                "Watch for hypothermia signs: uncontrollable shivering, slurred speech, confusion, drowsiness — this is an emergency.",
+                "Get the person dry and insulated from the ground and wind immediately; wet clothing accelerates heat loss dramatically.",
+                "Warm the body core first (torso) before extremities — direct heat to hands/feet first can cause dangerous blood-flow shifts.",
+                "Do not give alcohol to someone with hypothermia; it worsens heat loss.",
+                "Frostbite (white/waxy, numb skin) should be rewarmed gradually with body heat or warm (not hot) water — never rub the affected area."
+            ]
+        }
+    ]
 };
+
