@@ -274,7 +274,11 @@ def nearby_disaster_lookup():
             "affected_countries": top.get("affected_countries", []),
             "alert_level": top["alert_level"],
             "distance_km": top["distance_km"],
-            "gdacs_source_url": gdacs_source_url
+            "gdacs_source_url": gdacs_source_url,
+            "event_lat": top.get("event_lat"),
+            "event_lon": top.get("event_lon"),
+            "user_lat": lat_float,
+            "user_lon": lon_float
         }), 200
 
     except Exception as e:

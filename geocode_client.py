@@ -35,6 +35,9 @@ KNOWN_COORDINATES = {
     "los angeles": {"lat": 34.0522, "lng": -118.2437, "country": "United States", "label": "Los Angeles, CA, USA"},
     "beijing": {"lat": 39.9042, "lng": 116.4074, "country": "China", "label": "Beijing, China"},
     "cairo": {"lat": 30.0444, "lng": 31.2357, "country": "Egypt", "label": "Cairo, Egypt"},
+    "brahmaputra": {"lat": 26.1800, "lng": 91.7500, "country": "India", "label": "Brahmaputra River, Assam, India"},
+    "assam": {"lat": 26.2006, "lng": 92.9376, "country": "India", "label": "Assam, India"},
+    "bangladesh": {"lat": 23.6850, "lng": 90.3563, "country": "Bangladesh", "label": "Bangladesh"},
 }
 
 

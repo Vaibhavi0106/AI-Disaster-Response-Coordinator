@@ -134,7 +134,7 @@ function initEventListeners() {
     });
 }
 
-async function performAnalysis() {
+async function performAnalysis(optLat, optLng) {
     const queryInput = document.getElementById('disasterQuery');
     const searchBtn = document.getElementById('searchBtn');
     const loadingBox = document.getElementById('loadingBox');
@@ -154,10 +154,15 @@ async function performAnalysis() {
     await runLoadingProgress();
 
     try {
+        const payload = { query: query };
+        if (optLat != null && optLng != null) {
+            payload.latitude = optLat;
+            payload.longitude = optLng;
+        }
         const response = await fetch('/api/analyze', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ query: query })
+            body: JSON.stringify(payload)
         });
 
         if (!response.ok) {
@@ -750,6 +755,8 @@ function initLeafletMap(locations, defaultSeverity) {
         document.querySelectorAll(".layer-row").forEach(el => el.classList.remove("active"));
         const statusEl = document.getElementById("layerStatus");
         if (statusEl) statusEl.textContent = "";
+
+        updateMapLegend('default');
 
         let centerLat = 20.5937;
         let centerLng = 78.9629;
@@ -1351,10 +1358,10 @@ function handleNearbyLookupResult(data) {
 
     examplesRow.innerHTML = `
         <small class="text-warning fw-bold font-mono me-2 fs-6">Near You:</small>
-        <span class="sample-pill nearby-pill border border-info shadow-sm" tabindex="0" role="button" data-query="${escapeHtml(data.local_query)}">
+        <span class="sample-pill nearby-pill border border-info shadow-sm" tabindex="0" role="button" data-query="${escapeHtml(data.local_query)}" data-lat="${data.user_lat || ''}" data-lng="${data.user_lon || ''}">
             <i class="bi bi-geo-alt-fill text-info me-1"></i> ${escapeHtml(locLabel)}
         </span>
-        <span class="sample-pill nearby-pill gdacs-pill border border-danger shadow-sm ms-2" tabindex="0" role="button" data-query="${escapeHtml(data.gdacs_query)}">
+        <span class="sample-pill nearby-pill gdacs-pill border border-danger shadow-sm ms-2" tabindex="0" role="button" data-query="${escapeHtml(data.gdacs_query)}" data-lat="${data.event_lat || ''}" data-lng="${data.event_lon || ''}">
             <i class="bi bi-broadcast text-danger me-1"></i> ${escapeHtml(evType)} — ${escapeHtml(gdacsLoc)}
             <span class="badge ${alertBadgeClass} font-mono fs-8 ms-1" title="Alert level: ${escapeHtml(data.alert_level)}">
                 🛰️ GDACS · ${distKm} km away
@@ -1368,9 +1375,14 @@ function handleNearbyLookupResult(data) {
     samplePills.forEach(pill => {
         pill.addEventListener('click', () => {
             const query = pill.getAttribute('data-query');
+            const pillLat = pill.getAttribute('data-lat');
+            const pillLng = pill.getAttribute('data-lng');
             if (queryInput) {
                 queryInput.value = query;
-                performAnalysis();
+                performAnalysis(
+                    pillLat ? parseFloat(pillLat) : undefined,
+                    pillLng ? parseFloat(pillLng) : undefined
+                );
             }
         });
     });
@@ -1832,36 +1844,61 @@ const LAYER_DEFINITIONS = {
   precipitation: () => {
     const apiKey = window.OPENWEATHER_API_KEY || "REDACTED_OPENWEATHER_KEY";
     return L.tileLayer(
-      `https://tile.openweathermap.org/map/precipitation_new/{z}/{x}/{y}.png?appid=${apiKey}`,
-      { attribution: "OpenWeatherMap", opacity: 0.75 }
+      `https://{s}.tile.openweathermap.org/map/precipitation_new/{z}/{x}/{y}.png?appid=${apiKey}`,
+      {
+        subdomains: ['a', 'b', 'c'],
+        attribution: "OpenWeatherMap",
+        maxZoom: 19,
+        opacity: 0.95
+      }
     );
   },
   wind: () => {
     const apiKey = window.OPENWEATHER_API_KEY || "REDACTED_OPENWEATHER_KEY";
     return L.tileLayer(
-      `https://tile.openweathermap.org/map/wind_new/{z}/{x}/{y}.png?appid=${apiKey}`,
-      { attribution: "OpenWeatherMap", opacity: 0.75 }
+      `https://{s}.tile.openweathermap.org/map/wind_new/{z}/{x}/{y}.png?appid=${apiKey}`,
+      {
+        subdomains: ['a', 'b', 'c'],
+        attribution: "OpenWeatherMap",
+        maxZoom: 19,
+        opacity: 0.95
+      }
     );
   },
   temperature: () => {
     const apiKey = window.OPENWEATHER_API_KEY || "REDACTED_OPENWEATHER_KEY";
     return L.tileLayer(
-      `https://tile.openweathermap.org/map/temp_new/{z}/{x}/{y}.png?appid=${apiKey}`,
-      { attribution: "OpenWeatherMap", opacity: 0.75 }
+      `https://{s}.tile.openweathermap.org/map/temp_new/{z}/{x}/{y}.png?appid=${apiKey}`,
+      {
+        subdomains: ['a', 'b', 'c'],
+        attribution: "OpenWeatherMap",
+        maxZoom: 19,
+        opacity: 0.95
+      }
     );
   },
-  humidity: () => {
+  clouds: () => {
     const apiKey = window.OPENWEATHER_API_KEY || "REDACTED_OPENWEATHER_KEY";
     return L.tileLayer(
-      `https://tile.openweathermap.org/map/humidity_new/{z}/{x}/{y}.png?appid=${apiKey}`,
-      { attribution: "OpenWeatherMap", opacity: 0.75 }
+      `https://{s}.tile.openweathermap.org/map/clouds_new/{z}/{x}/{y}.png?appid=${apiKey}`,
+      {
+        subdomains: ['a', 'b', 'c'],
+        attribution: "OpenWeatherMap",
+        maxZoom: 19,
+        opacity: 0.95
+      }
     );
   },
   pressure: () => {
     const apiKey = window.OPENWEATHER_API_KEY || "REDACTED_OPENWEATHER_KEY";
     return L.tileLayer(
-      `https://tile.openweathermap.org/map/pressure_new/{z}/{x}/{y}.png?appid=${apiKey}`,
-      { attribution: "OpenWeatherMap", opacity: 0.75 }
+      `https://{s}.tile.openweathermap.org/map/pressure_new/{z}/{x}/{y}.png?appid=${apiKey}`,
+      {
+        subdomains: ['a', 'b', 'c'],
+        attribution: "OpenWeatherMap",
+        maxZoom: 19,
+        opacity: 0.95
+      }
     );
   }
 };
@@ -1891,6 +1928,96 @@ async function buildRainviewerLayer(statusEl) {
     }
 }
 
+const LEGEND_DEFINITIONS = {
+  default: `
+    <div class="legend-title"><i class="bi bi-geo-alt-fill text-danger me-1"></i> SECTOR SEVERITY & MAP INDEX</div>
+    <div class="legend-items">
+      <div class="legend-item"><span class="legend-dot" style="background: #B22222;"></span> Critical Risk Sector</div>
+      <div class="legend-item"><span class="legend-dot" style="background: #d97706;"></span> High Risk Sector</div>
+      <div class="legend-item"><span class="legend-dot" style="background: #FFC107;"></span> Medium Risk Sector</div>
+      <div class="legend-item"><span class="legend-dot" style="background: #00e676;"></span> Low / Clear Status Sector</div>
+      <div class="legend-item"><span class="legend-dot" style="background: #00e5ff; border-radius: 2px;"></span> Relief Shelter</div>
+    </div>
+  `,
+  satellite: `
+    <div class="legend-title"><i class="bi bi-broadcast me-1 text-info"></i> SATELLITE IMAGERY INDEX</div>
+    <div class="legend-desc">High-resolution optical surface imagery (Esri/Maxar) for inspecting river channels, flooded terrain, and infrastructure.</div>
+  `,
+  radar: `
+    <div class="legend-title"><i class="bi bi-radar me-1 text-warning"></i> LIVE DOPPLER RADAR INDEX</div>
+    <div class="legend-bar-container">
+      <div class="legend-bar" style="background: linear-gradient(to right, #00ecec, #00a000, #ffff00, #ff0000, #d000d0);"></div>
+      <div class="legend-bar-labels">
+        <span>Light Rain</span>
+        <span>Moderate</span>
+        <span>Heavy / Hail</span>
+      </div>
+    </div>
+  `,
+  precipitation: `
+    <div class="legend-title"><i class="bi bi-cloud-rain-fill me-1 text-info"></i> PRECIPITATION RATE INDEX</div>
+    <div class="legend-bar-container">
+      <div class="legend-bar" style="background: linear-gradient(to right, #00ffff, #0099ff, #ffff00, #ff3300, #9900cc);"></div>
+      <div class="legend-bar-labels">
+        <span>0.1 mm/h</span>
+        <span>2.5 mm/h</span>
+        <span>10+ mm/h</span>
+      </div>
+    </div>
+  `,
+  wind: `
+    <div class="legend-title"><i class="bi bi-wind me-1 text-info"></i> WIND VELOCITY INDEX</div>
+    <div class="legend-bar-container">
+      <div class="legend-bar" style="background: linear-gradient(to right, #00e5ff, #00ff66, #ffff00, #ff6600, #ff0055);"></div>
+      <div class="legend-bar-labels">
+        <span>Calm (&lt;15 km/h)</span>
+        <span>Strong (40 km/h)</span>
+        <span>Gale (90+ km/h)</span>
+      </div>
+    </div>
+  `,
+  temperature: `
+    <div class="legend-title"><i class="bi bi-thermometer-half me-1 text-danger"></i> TEMPERATURE INDEX</div>
+    <div class="legend-bar-container">
+      <div class="legend-bar" style="background: linear-gradient(to right, #800080, #0000ff, #00ff00, #ffff00, #ff0000);"></div>
+      <div class="legend-bar-labels">
+        <span>&lt; -10°C</span>
+        <span>15°C</span>
+        <span>30°C</span>
+        <span>45°C+</span>
+      </div>
+    </div>
+  `,
+  clouds: `
+    <div class="legend-title"><i class="bi bi-cloud-fill me-1 text-white"></i> CLOUD COVER INDEX</div>
+    <div class="legend-bar-container">
+      <div class="legend-bar" style="background: linear-gradient(to right, rgba(255,255,255,0.1), rgba(255,255,255,0.5), rgba(255,255,255,0.95));"></div>
+      <div class="legend-bar-labels">
+        <span>Scattered (20%)</span>
+        <span>Broken (60%)</span>
+        <span>Overcast (100%)</span>
+      </div>
+    </div>
+  `,
+  pressure: `
+    <div class="legend-title"><i class="bi bi-compass me-1 text-warning"></i> PRESSURE (BAROMETRIC) INDEX</div>
+    <div class="legend-bar-container">
+      <div class="legend-bar" style="background: linear-gradient(to right, #9900cc, #0000ff, #00ffcc, #ffff00, #ff0000);"></div>
+      <div class="legend-bar-labels">
+        <span>&lt; 980 hPa (Low)</span>
+        <span>1013 hPa</span>
+        <span>&gt; 1030 hPa (High)</span>
+      </div>
+    </div>
+  `
+};
+
+function updateMapLegend(layerKey = 'default') {
+    const container = document.getElementById('mapLegendContent');
+    if (!container) return;
+    container.innerHTML = LEGEND_DEFINITIONS[layerKey] || LEGEND_DEFINITIONS['default'];
+}
+
 async function selectMapLayer(layerKey) {
     if (!mapInstance) return;
 
@@ -1908,7 +2035,8 @@ async function selectMapLayer(layerKey) {
     document.querySelectorAll(".layer-row").forEach((el) => el.classList.remove("active"));
 
     if (isAlreadyActive) {
-        // Toggled off layer, return to default CartoDB dark basemap
+        // Toggled off layer, return to default CartoDB dark basemap & legend index
+        updateMapLegend('default');
         return;
     }
 
@@ -1924,6 +2052,17 @@ async function selectMapLayer(layerKey) {
         layer.addTo(mapInstance);
         activeMapLayer = layer;
         if (targetRow) targetRow.classList.add("active");
+        updateMapLegend(layerKey);
+
+        // Auto-focus to disaster location if currently zoomed out to global view
+        if (mapInstance.getZoom() < 5 && Array.isArray(mapMarkers) && mapMarkers.length > 0) {
+            try {
+                const group = L.featureGroup(mapMarkers);
+                mapInstance.fitBounds(group.getBounds(), { padding: [50, 50], maxZoom: 9 });
+            } catch (e) {
+                console.warn("fitBounds on layer select:", e);
+            }
+        }
     }
 }
 

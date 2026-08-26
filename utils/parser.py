@@ -226,7 +226,26 @@ def parse_disaster_json(raw_response: str | dict, query: str = "", resolved_plac
         "latest disaster near",
         "disaster near",
         "emergency near",
-        "situation near"
+        "situation near",
+        "latest disaster in",
+        "disaster in",
+        "emergency in",
+        "flood in",
+        "flood near",
+        "earthquake in",
+        "earthquake near",
+        "cyclone in",
+        "cyclone near",
+        "tropical cyclone in",
+        "tropical cyclone near",
+        "hurricane in",
+        "hurricane near",
+        "typhoon in",
+        "typhoon near",
+        "wildfire in",
+        "wildfire near",
+        "fire in",
+        "fire near",
     ]
     for p in banned_prefixes:
         if place_name.lower().startswith(p):

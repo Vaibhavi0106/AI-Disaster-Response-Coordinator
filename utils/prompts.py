@@ -29,7 +29,17 @@ def extract_place_name(query: str, llm=None) -> str | None:
     if not query or not query.strip():
         return None
 
-    banned_words = {"latest", "disaster", "situation", "emergency", "near", "current", "report", "reports", "bulletin", "update", "updates"}
+    banned_words = {
+        "latest", "disaster", "situation", "emergency", "near", "current",
+        "report", "reports", "bulletin", "update", "updates",
+        # Disaster-type words that are never part of a place name
+        "flood", "flooding", "earthquake", "cyclone", "hurricane", "typhoon",
+        "storm", "wildfire", "bushfire", "fire", "tsunami", "drought",
+        "volcanic", "eruption", "landslide", "tornado", "blizzard",
+        "tropical", "seismic", "tremor",
+        # Common filler words
+        "in", "at", "of", "the", "a", "an", "or", "and",
+    }
 
     if llm:
         try:
@@ -56,7 +66,23 @@ def extract_place_name(query: str, llm=None) -> str | None:
         "situation near",
         "latest disaster in",
         "disaster in",
-        "emergency in"
+        "emergency in",
+        "flood in",
+        "flood near",
+        "earthquake in",
+        "earthquake near",
+        "cyclone in",
+        "cyclone near",
+        "tropical cyclone in",
+        "tropical cyclone near",
+        "hurricane in",
+        "hurricane near",
+        "typhoon in",
+        "typhoon near",
+        "wildfire in",
+        "wildfire near",
+        "fire in",
+        "fire near",
     ]
     for p in prefixes:
         if clean.lower().startswith(p):

@@ -397,7 +397,7 @@
                                 <button type="button" class="layer-row" data-layer="precipitation">🌧️ Precipitation</button>
                                 <button type="button" class="layer-row" data-layer="wind">💨 Wind</button>
                                 <button type="button" class="layer-row" data-layer="temperature">🌡️ Temperature</button>
-                                <button type="button" class="layer-row" data-layer="humidity">💧 Humidity</button>
+                                <button type="button" class="layer-row" data-layer="clouds">☁️ Clouds</button>
                                 <button type="button" class="layer-row" data-layer="pressure">🧭 Pressure</button>
 
                                 <div id="layerStatus" class="layer-status-text"></div>
@@ -405,6 +405,11 @@
                             </div>
 
                             <div id="mapContainer"></div>
+
+                            <!-- Floating Map Legend / Index Panel (Bottom Right) -->
+                            <div id="mapLegendPanel" class="map-legend-panel">
+                                <div id="mapLegendContent"></div>
+                            </div>
                         </div>
                     </div>
 
