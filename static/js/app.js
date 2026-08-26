@@ -2039,8 +2039,10 @@ async function selectMapLayer(layerKey) {
 
     document.querySelectorAll(".layer-row").forEach((el) => el.classList.remove("active"));
 
-    if (isAlreadyActive) {
-        // Toggled off layer, return to default CartoDB dark basemap & legend index
+    if (isAlreadyActive || layerKey === "street") {
+        // Return to default CartoDB dark street basemap
+        const streetRow = document.querySelector('.layer-row[data-layer="street"]');
+        if (streetRow) streetRow.classList.add("active");
         updateMapLegend('default');
         return;
     }
