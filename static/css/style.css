@@ -868,3 +868,15 @@ h1, h2, h3, h4, h5, h6, .brand-text {
   background: #0284c7;
 }
 
+.gdacs-badge-chip {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 2px 8px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.15);
+  color: #ffd54f;
+  font-size: 0.75em;
+  font-weight: 600;
+}
+
+

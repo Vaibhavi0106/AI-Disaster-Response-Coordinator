@@ -2,7 +2,7 @@
 GDACS Client Module (gdacs_client.py)
 Queries UN/EU Global Disaster Alert and Coordination System (GDACS) API
 for real, currently-active global disasters within a specified radius.
-Uses resolve_place() to determine authentic single-point location labels.
+Splits GDACS country strings into primary_country and clean countries list.
 """
 
 import time
@@ -66,10 +66,8 @@ def _fetch_active_events() -> list:
 def find_nearby_disasters(lat: float, lon: float, radius_km: float = 500.0, max_results: int = 3) -> list:
     """
     Returns active GDACS events within radius_km of given coordinates, nearest first.
-    Uses resolve_place() to resolve the event's actual coordinates into a clean location label.
+    Splits multi-country GDACS strings into clean primary_country and countries array.
     """
-    from geocode_client import resolve_place
-
     events = _fetch_active_events()
     scored = []
 
@@ -98,23 +96,18 @@ def find_nearby_disasters(lat: float, lon: float, radius_km: float = 500.0, max_
         sev_data = props.get("severitydata", {})
         sev_text = props.get("severitytext") or (sev_data.get("severitytext") if isinstance(sev_data, dict) else "")
 
-        raw_country = props.get("country") or props.get("name") or "Global Zone"
-        countries = [c.strip() for c in (raw_country or "").split(",") if c.strip()]
-
-        # Resolve event's own location from real coordinates
-        event_place = resolve_place(ev_lat, ev_lon)
-        display_label = event_place["short_label"]
-        if display_label == "the affected area" and raw_country:
-            display_label = raw_country
+        raw_country = props.get("country") or props.get("name") or ""
+        countries = [c.strip() for c in raw_country.split(",") if c.strip()]
+        primary_country = countries[0] if countries else (props.get("name") or "Unknown")
 
         results.append({
             "event_type": EVENT_TYPE_LABELS.get(props.get("eventtype"), props.get("eventtype")),
             "event_type_code": props.get("eventtype"),
             "alert_level": props.get("alertlevel", "Green"),
-            "country": display_label,
+            "country": primary_country,
+            "primary_country": primary_country,
+            "countries": countries,
             "raw_gdacs_country": raw_country,
-            "affected_countries": countries,
-            "event_location_label": display_label,
             "event_name": props.get("name") or props.get("eventname") or props.get("description") or "Disaster Event",
             "severity_text": sev_text,
             "from_date": props.get("fromdate"),

@@ -247,22 +247,23 @@ function renderDashboard(data) {
     const gdacsBadge = document.getElementById('gdacsBadge');
     if (gdacsBadge) {
         if (data.gdacs_verified) {
-            const evType = data.gdacs_event_type ? `${data.gdacs_event_type}` : 'Event';
+            const evType = data.gdacs_event_type || 'Disaster Event';
             const alertLvl = data.gdacs_alert_level || 'Alert';
             const distKm = data.gdacs_distance_km || '0';
             const srcUrl = data.gdacs_source_url || 'https://www.gdacs.org';
-            const locLabel = data.gdacs_event_location || 'the target area';
             
-            let multiCountryHtml = '';
-            if (data.affected_countries && data.affected_countries.length > 1) {
-                const extraCountries = data.affected_countries.filter(c => !locLabel.toLowerCase().includes(c.toLowerCase()));
-                if (extraCountries.length > 0) {
-                    multiCountryHtml = `<div class="fs-8 text-warning mt-1"><i class="bi bi-globe me-1"></i> Also affecting: ${extraCountries.join(', ')}</div>`;
-                }
+            const countries = data.countries || [];
+            const primaryCountry = data.primary_country || countries[0] || data.gdacs_event_location || 'Target Region';
+            const extraCountries = countries.length > 1 ? countries.slice(1) : [];
+            
+            const headline = `${evType} — ${primaryCountry}`;
+            let extraChipsHtml = '';
+            if (extraCountries.length > 0) {
+                extraChipsHtml = extraCountries.map(c => `<span class="gdacs-badge-chip">also: ${escapeHtml(c)}</span>`).join('');
             }
             
-            gdacsBadge.className = 'badge bg-danger text-white border border-warning font-mono py-2 px-3 fs-7 shadow-sm d-inline-flex flex-column align-items-start gap-1';
-            gdacsBadge.innerHTML = `<a href="${srcUrl}" target="_blank" rel="noopener noreferrer" class="text-white text-decoration-none d-inline-flex align-items-center gap-1"><i class="bi bi-broadcast text-warning me-1"></i> 🛰️ GDACS Verified · ${evType} near ${locLabel} (${distKm} km away) · Alert: ${alertLvl} <i class="bi bi-box-arrow-up-right ms-1 fs-8"></i></a>${multiCountryHtml}`;
+            gdacsBadge.className = 'badge bg-danger text-white border border-warning font-mono py-2 px-3 fs-7 shadow-sm d-inline-flex align-items-center flex-wrap gap-1';
+            gdacsBadge.innerHTML = `<a href="${srcUrl}" target="_blank" rel="noopener noreferrer" class="text-white text-decoration-none d-inline-flex align-items-center gap-1"><i class="bi bi-broadcast text-warning me-1"></i> 🛰️ GDACS Verified · ${headline} (${distKm} km away) · Alert: ${alertLvl} <i class="bi bi-box-arrow-up-right ms-1 fs-8"></i></a>${extraChipsHtml}`;
         } else {
             gdacsBadge.className = 'd-none';
             gdacsBadge.innerHTML = '';
@@ -730,108 +731,123 @@ function initLeafletMap(locations, defaultSeverity) {
     const mapDiv = document.getElementById('mapContainer');
     if (!mapDiv) return;
 
-    if (mapInstance) {
-        mapInstance.remove();
-        mapInstance = null;
-    }
-
-    mapMarkers = [];
-
-    let centerLat = 20.5937;
-    let centerLng = 78.9629;
-    let zoomLevel = 11;
-
-    const validLocs = locations.filter(l => l.lat && l.lng && (l.lat !== 0 || l.lng !== 0));
-    if (validLocs.length > 0) {
-        centerLat = validLocs[0].lat;
-        centerLng = validLocs[0].lng;
-    }
-
-    mapInstance = L.map('mapContainer', {
-        center: [centerLat, centerLng],
-        zoom: zoomLevel,
-        zoomControl: true
-    });
-
-    // Base Layer 1: Street Map (Carto Dark / OSM)
-    const darkTiles = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-        attribution: '&copy; OpenStreetMap contributors &copy; CARTO',
-        subdomains: 'abcd',
-        maxZoom: 19
-    });
-
-    // Base Layer 2: Esri World Imagery (Satellite)
-    const esriSatellite = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
-        attribution: 'Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community',
-        maxZoom: 19
-    });
-
-    // Optional Overlay: NASA GIBS VIIRS/MODIS True-Color Imagery
-    const gibsDate = getNasaGibsDate();
-    const nasaGibsOverlay = L.tileLayer(`https://gibs-{s}.earthdata.nasa.gov/wmts/epsg3857/best/VIIRS_SNPP_CorrectedReflectance_TrueColor/default/${gibsDate}/GoogleMapsCompatible_Level9/{z}/{y}/{x}.jpg`, {
-        attribution: '&copy; NASA GIBS / Earthdata',
-        subdomains: ['a', 'b', 'c'],
-        maxZoom: 19,
-        maxNativeZoom: 9,
-        opacity: 0.75
-    });
-
-    // Default base layer on load stays Street Map
-    darkTiles.addTo(mapInstance);
-
-    // Layer Control for base layers and optional overlay
-    const baseMaps = {
-        "Street Map": darkTiles,
-        "Satellite": esriSatellite
-    };
-
-    const overlayMaps = {
-        "NASA Satellite Overlay (VIIRS)": nasaGibsOverlay
-    };
-
-    L.control.layers(baseMaps, overlayMaps, { collapsed: true }).addTo(mapInstance);
-
-    setTimeout(() => {
+    try {
         if (mapInstance) {
-            mapInstance.invalidateSize();
+            mapInstance.remove();
+            mapInstance = null;
         }
-    }, 250);
 
-    if (validLocs.length > 0) {
-        const bounds = L.latLngBounds();
+        mapMarkers = [];
 
-        validLocs.forEach((loc, idx) => {
-            const color = getSeverityColor(loc.severity || defaultSeverity);
+        let centerLat = 20.5937;
+        let centerLng = 78.9629;
+        let zoomLevel = 11;
 
-            const marker = L.circleMarker([loc.lat, loc.lng], {
-                radius: 12,
-                fillColor: color,
-                color: '#ffffff',
-                weight: 3,
-                opacity: 1,
-                fillOpacity: 0.95
-            }).addTo(mapInstance);
+        const locList = Array.isArray(locations) ? locations : [];
+        const validLocs = locList.filter(l => l && typeof l === 'object' && l.lat != null && l.lng != null && (l.lat !== 0 || l.lng !== 0));
+        if (validLocs.length > 0) {
+            centerLat = validLocs[0].lat;
+            centerLng = validLocs[0].lng;
+        }
 
-            const popupContent = `
-                <div style="padding: 6px; min-width: 190px; background: #1a1a1a; color: #ffffff;">
-                    <strong style="font-size: 1.1rem; color: #ffffff; display: block; margin-bottom: 2px;">${loc.name}</strong>
-                    <span style="font-weight: 800; color: ${color}; font-size: 0.85rem; text-transform: uppercase;">
-                        Severity: ${loc.severity || defaultSeverity}
-                    </span>
-                    <p style="margin-top: 6px; margin-bottom: 0; font-size: 0.85rem; color: #FFC107; font-weight: 600; line-height: 1.3;">
-                        ${loc.details || 'Impacted sector requiring response.'}
-                    </p>
-                </div>
-            `;
-
-            marker.bindPopup(popupContent);
-            mapMarkers.push(marker);
-            bounds.extend([loc.lat, loc.lng]);
+        mapInstance = L.map('mapContainer', {
+            center: [centerLat, centerLng],
+            zoom: zoomLevel,
+            zoomControl: true
         });
 
-        if (validLocs.length > 1) {
-            mapInstance.fitBounds(bounds, { padding: [60, 60] });
+        // Base Layer 1: Street Map (Carto Dark / OSM)
+        const darkTiles = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+            attribution: '&copy; OpenStreetMap contributors &copy; CARTO',
+            subdomains: 'abcd',
+            maxZoom: 19
+        });
+
+        // Base Layer 2: Esri World Imagery (Satellite)
+        const esriSatellite = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+            attribution: 'Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community',
+            maxZoom: 19
+        });
+
+        // Optional Overlay: NASA GIBS VIIRS/MODIS True-Color Imagery
+        const gibsDate = getNasaGibsDate();
+        const nasaGibsOverlay = L.tileLayer(`https://gibs-{s}.earthdata.nasa.gov/wmts/epsg3857/best/VIIRS_SNPP_CorrectedReflectance_TrueColor/default/${gibsDate}/GoogleMapsCompatible_Level9/{z}/{y}/{x}.jpg`, {
+            attribution: '&copy; NASA GIBS / Earthdata',
+            subdomains: ['a', 'b', 'c'],
+            maxZoom: 19,
+            maxNativeZoom: 9,
+            opacity: 0.75
+        });
+
+        // Default base layer on load added FIRST, unconditionally
+        darkTiles.addTo(mapInstance);
+
+        // Layer Control for base layers and optional overlay
+        const baseMaps = {
+            "Street Map": darkTiles,
+            "Satellite": esriSatellite
+        };
+
+        const overlayMaps = {
+            "NASA Satellite Overlay (VIIRS)": nasaGibsOverlay
+        };
+
+        L.control.layers(baseMaps, overlayMaps, { collapsed: true }).addTo(mapInstance);
+
+        // Invalidate canvas size to ensure full rendering on DOM display change
+        mapInstance.invalidateSize();
+        setTimeout(() => { if (mapInstance) mapInstance.invalidateSize(); }, 100);
+        setTimeout(() => { if (mapInstance) mapInstance.invalidateSize(); }, 350);
+
+        if (validLocs.length > 0) {
+            const bounds = L.latLngBounds();
+
+            validLocs.forEach((loc, idx) => {
+                try {
+                    const color = getSeverityColor(loc.severity || defaultSeverity);
+                    const markerName = escapeHtml(loc.name || 'Sector');
+                    const markerDetails = escapeHtml(loc.details || 'Impacted sector requiring response.');
+                    const isApprox = loc.approximate ? ' (Approximate Location)' : '';
+
+                    const marker = L.circleMarker([loc.lat, loc.lng], {
+                        radius: 12,
+                        fillColor: color,
+                        color: '#ffffff',
+                        weight: 3,
+                        opacity: 1,
+                        fillOpacity: 0.95
+                    }).addTo(mapInstance);
+
+                    const popupContent = `
+                        <div style="padding: 6px; min-width: 190px; background: #1a1a1a; color: #ffffff;">
+                            <strong style="font-size: 1.1rem; color: #ffffff; display: block; margin-bottom: 2px;">${markerName}${isApprox}</strong>
+                            <span style="font-weight: 800; color: ${color}; font-size: 0.85rem; text-transform: uppercase;">
+                                Severity: ${escapeHtml(loc.severity || defaultSeverity)}
+                            </span>
+                            <p style="margin-top: 6px; margin-bottom: 0; font-size: 0.85rem; color: #FFC107; font-weight: 600; line-height: 1.3;">
+                                ${markerDetails}
+                            </p>
+                        </div>
+                    `;
+
+                    marker.bindPopup(popupContent);
+                    mapMarkers.push(marker);
+                    bounds.extend([loc.lat, loc.lng]);
+                } catch (markerErr) {
+                    console.warn('Skipping malformed location marker:', loc, markerErr);
+                }
+            });
+
+            if (validLocs.length > 1) {
+                try {
+                    mapInstance.fitBounds(bounds, { padding: [60, 60] });
+                } catch (boundsErr) {
+                    console.warn('fitBounds error:', boundsErr);
+                }
+            }
         }
+    } catch (err) {
+        console.error('Error initializing Leaflet map:', err);
     }
 }
 

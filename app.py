@@ -64,7 +64,7 @@ def filter_for_role(disaster_json: dict, role: str) -> dict:
         "recommended_resources_public", "safety_measures", "evacuation_shelters",
         "sources_public", "weather_metrics", "impact_radius", "emergency_contacts",
         "gdacs_verified", "gdacs_event_type", "gdacs_alert_level", "gdacs_distance_km",
-        "gdacs_event_location", "gdacs_source_url"
+        "gdacs_event_location", "gdacs_source_url", "countries", "primary_country"
     }
 
     filtered = {k: v for k, v in disaster_json.items() if k in allowed_keys}
