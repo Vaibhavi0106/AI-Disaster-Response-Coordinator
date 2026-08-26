@@ -38,8 +38,8 @@ class DisasterAgent:
                     model="gpt-4o-mini",
                     temperature=0.2,
                     api_key=self.openai_key,
-                    max_retries=1,
-                    request_timeout=5
+                    max_retries=2,
+                    request_timeout=15
                 )
 
                 logger.info(f"✓ OpenAI Request Started for query: '{query}'")
@@ -51,7 +51,7 @@ class DisasterAgent:
                 logger.info("✓ OpenAI Response Received")
 
                 raw_response = res.content
-                final_data = parse_disaster_json(raw_response)
+                final_data = parse_disaster_json(raw_response, query=query)
                 
                 if sources:
                     existing_sources = final_data.get("sources", [])
@@ -64,7 +64,7 @@ class DisasterAgent:
 
         # 3. Demonstration Fallback Mode
         logger.info(f"Using resilient fallback analysis engine for query: '{query}'")
-        fallback_json = parse_disaster_json({"summary": f"Emergency situation reported for {query}. Ground telemetry active."})
+        fallback_json = parse_disaster_json({"summary": f"Operational telemetry check for {query}. Ground truth location reports requested."}, query=query)
         if sources:
             fallback_json["sources"] = list(dict.fromkeys(fallback_json.get("sources", []) + sources))
         return fallback_json
