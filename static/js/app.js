@@ -801,18 +801,6 @@ function initLeafletMap(locations, defaultSeverity) {
         // Default base layer on load added FIRST, unconditionally
         darkTiles.addTo(mapInstance);
 
-        // Layer Control for base layers and optional overlay
-        const baseMaps = {
-            "Street Map": darkTiles,
-            "Satellite": esriSatellite
-        };
-
-        const overlayMaps = {
-            "NASA Satellite Overlay (VIIRS)": nasaGibsOverlay
-        };
-
-        L.control.layers(baseMaps, overlayMaps, { collapsed: true }).addTo(mapInstance);
-
         // Invalidate canvas size to ensure full rendering on DOM display change
         mapInstance.invalidateSize();
         setTimeout(() => { if (mapInstance) mapInstance.invalidateSize(); }, 100);
