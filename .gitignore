@@ -3,3 +3,4 @@
 __pycache__/
 *.pyc
 scratch_*.py
+static/models/

@@ -553,7 +553,7 @@ def parse_disaster_json(raw_response: str, query: str = "") -> dict:
             {"name": f"{loc_name.title()} Central Sector", "lat": round(lat, 4), "lng": round(lng, 4), "severity": result["severity"], "details": f"Operational sector in {loc_name.title()}."},
             {"name": f"{loc_name.title()} North Sector", "lat": round(lat + 0.045, 4), "lng": round(lng - 0.020, 4), "severity": "Low" if severity == "Low" else "High", "details": f"Suburban perimeter of {loc_name.title()}."},
             {"name": f"{loc_name.title()} South Sector", "lat": round(lat - 0.040, 4), "lng": round(lng - 0.015, 4), "severity": "Low" if severity == "Low" else "High", "details": f"Transit corridors near {loc_name.title()}."},
-            {"name": f"{loc_name.title()} East Sector", "lat": round(lat + 0.010, 4), "lng": round(lat + 0.050, 4), "severity": "Low" if severity == "Low" else "Medium", "details": f"Staging area and shelter sector."}
+            {"name": f"{loc_name.title()} East Sector", "lat": round(lat + 0.010, 4), "lng": round(lng + 0.050, 4), "severity": "Low" if severity == "Low" else "Medium", "details": f"Staging area and shelter sector."}
         ]
 
     result["affected_locations"] = processed_locations
