@@ -382,27 +382,11 @@
                             <small class="text-white font-mono fw-bold"><i class="bi bi-map-fill text-cyan me-1"></i> Leaflet.js / CartoDB & Satellite</small>
                         </div>
                         <div class="map-wrapper" style="position: relative;">
-                            <!-- Zoom-Earth-Style Live Maps / Forecast Maps Panel -->
+                            <!-- Single Satellite Basemap Toggle Button -->
                             <div id="mapLayersPanel" class="map-layers-panel">
-                              <button type="button" class="map-layers-toggle" onclick="toggleLayersPanel()">
-                                <span class="zoom-badge">🌐</span> MAP LAYERS <span id="layersChevron" class="chevron ms-auto">▲</span>
-                              </button>
-
-                              <div id="mapLayersBody" class="map-layers-body">
-                                <div class="layers-section-label">LIVE MAPS</div>
-                                <button type="button" class="layer-row active" data-layer="base">🌐 Default Base Map</button>
-                                <button type="button" class="layer-row" data-layer="satellite">📡 Satellite</button>
-                                <button type="button" class="layer-row" data-layer="live">🛰️ Live (NASA)</button>
-                                <button type="button" class="layer-row" data-layer="hd">🔍 HD Satellite</button>
-                                <button type="button" class="layer-row" data-layer="radar">📶 Radar (RainViewer)</button>
-
-                                <div class="layers-section-label">FORECAST MAPS</div>
-                                <button type="button" class="layer-row" data-layer="precipitation">🌧️ Precipitation</button>
-                                <button type="button" class="layer-row" data-layer="wind">💨 Wind</button>
-                                <button type="button" class="layer-row" data-layer="temperature">🌡️ Temperature</button>
-                                <button type="button" class="layer-row" data-layer="humidity">💧 Humidity</button>
-                                <button type="button" class="layer-row" data-layer="pressure">🧭 Pressure</button>
-                              </div>
+                                <button type="button" id="satelliteToggleBtn" class="map-layers-toggle" onclick="toggleSatelliteMode()">
+                                    <span id="satelliteBtnIcon">🛰️</span> <span id="satelliteBtnText">Satellite Mode</span>
+                                </button>
                             </div>
 
                             <div id="mapContainer"></div>

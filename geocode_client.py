@@ -2,7 +2,7 @@
 Geocode Client Module (geocode_client.py)
 Uses OpenStreetMap Nominatim reverse geocoding to resolve GPS coordinates
 into user-friendly city, state, country, and formatted place labels.
-Provides canonical resolve_place(), constrained geocode_near(), and marker resolution.
+Provides canonical resolve_place(), constrained geocode_near(), safe_marker_coords(), and resolve_marker().
 """
 
 import math
@@ -23,6 +23,8 @@ KNOWN_COORDINATES = {
     "wayanad": {"lat": 11.6854, "lng": 76.1320, "country": "India", "label": "Wayanad, Kerala, India"},
     "coimbatore": {"lat": 11.0168, "lng": 76.9558, "country": "India", "label": "Coimbatore, Tamil Nadu, India"},
     "brammapuram": {"lat": 11.0168, "lng": 76.9558, "country": "India", "label": "Brammapuram, Coimbatore, Tamil Nadu, India"},
+    "sri lanka": {"lat": 7.8731, "lng": 80.7718, "country": "Sri Lanka", "label": "Sri Lanka"},
+    "colombo": {"lat": 6.9271, "lng": 79.8612, "country": "Sri Lanka", "label": "Colombo, Sri Lanka"},
     "tokyo": {"lat": 35.6762, "lng": 139.6503, "country": "Japan", "label": "Tokyo, Japan"},
     "new york": {"lat": 40.7128, "lng": -74.0060, "country": "United States", "label": "New York, NY, USA"},
     "sydney": {"lat": -33.8688, "lng": 151.2093, "country": "Australia", "label": "Sydney, NSW, Australia"},
@@ -187,21 +189,50 @@ def geocode_near(place_query: str, anchor_lat: float, anchor_lon: float, max_dis
     return None
 
 
+def safe_marker_coords(event_name: str, anchor_lat: float, anchor_lon: float, final_lat: float, final_lon: float, max_km: float = 1500.0) -> tuple[float, float, bool]:
+    """
+    Rejects any resolved marker coordinate that ends up implausibly far from the event's anchor point.
+    Falls back to anchor point directly with approximate=True if distance > max_km.
+    """
+    distance = _haversine_distance(anchor_lat, anchor_lon, final_lat, final_lon)
+    if distance > max_km:
+        logger.warning(
+            f"[MARKER REJECTED] {event_name}: {distance:.0f}km from anchor ({anchor_lat}, {anchor_lon}) "
+            f"— refusing to render at ({final_lat}, {final_lon}), falling back to anchor directly."
+        )
+        return round(anchor_lat, 4), round(anchor_lon, 4), True
+
+    is_approx = distance > 5.0
+    return round(final_lat, 4), round(final_lon, 4), is_approx
+
+
 def resolve_marker(place_query: str, anchor_lat: float, anchor_lon: float, offset_seed: int = 0) -> dict:
     """
     Resolves marker coordinates. Tries constrained `geocode_near` first.
-    If unconstrained or failed, places marker at small deterministic offset from anchor with approximate=True.
+    Clamps result using safe_marker_coords to guarantee zero continent-hopping bugs.
     """
     geocoded = geocode_near(place_query, anchor_lat, anchor_lon)
     if geocoded:
-        return {**geocoded, "approximate": False}
+        final_lat, final_lon, approx = safe_marker_coords(
+            place_query, anchor_lat, anchor_lon, geocoded["lat"], geocoded["lon"]
+        )
+        logger.info(f"[MARKER DEBUG] event={place_query!r} anchor=({anchor_lat},{anchor_lon}) geocode_result={geocoded} final=({final_lat},{final_lon}) approximate={approx}")
+        return {"lat": final_lat, "lon": final_lon, "approximate": approx}
 
     h = int(hashlib.md5(f"{place_query}_{offset_seed}".encode("utf-8")).hexdigest(), 16)
     offset_lat = (((h % 40) - 20) / 1000.0)
     offset_lon = ((((h >> 8) % 40) - 20) / 1000.0)
 
+    raw_lat = anchor_lat + offset_lat
+    raw_lon = anchor_lon + offset_lon
+
+    final_lat, final_lon, approx = safe_marker_coords(
+        place_query, anchor_lat, anchor_lon, raw_lat, raw_lon
+    )
+    logger.info(f"[MARKER DEBUG] event={place_query!r} anchor=({anchor_lat},{anchor_lon}) fallback_offset=({raw_lat},{raw_lon}) final=({final_lat},{final_lon}) approximate={approx}")
+
     return {
-        "lat": round(anchor_lat + offset_lat, 4),
-        "lon": round(anchor_lon + offset_lon, 4),
+        "lat": final_lat,
+        "lon": final_lon,
         "approximate": True
     }

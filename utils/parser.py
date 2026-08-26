@@ -3,7 +3,7 @@ import re
 import requests
 import logging
 import hashlib
-from geocode_client import geocode_location, reverse_geocode, resolve_place, resolve_marker
+from geocode_client import geocode_location, reverse_geocode, resolve_place, resolve_marker, safe_marker_coords
 from utils.prompts import extract_place_name
 
 logger = logging.getLogger(__name__)
@@ -471,11 +471,15 @@ def parse_disaster_json(raw_response: str | dict, query: str = "", resolved_plac
 
         if not s.get("latitude") or not s.get("longitude") or s.get("latitude") == 0.0:
             sm = resolve_marker(s_name, anchor_lat, anchor_lon, offset_seed=idx + 10)
-            s["latitude"] = sm["lat"]
-            s["longitude"] = sm["lon"]
-            s["approximate"] = sm.get("approximate", False)
-        s["lat"] = s["latitude"]
-        s["lng"] = s["longitude"]
+            s_lat, s_lng, approx = sm["lat"], sm["lon"], sm.get("approximate", False)
+        else:
+            s_lat, s_lng, approx = safe_marker_coords(s_name, anchor_lat, anchor_lon, float(s["latitude"]), float(s["longitude"]))
+
+        s["latitude"] = s_lat
+        s["longitude"] = s_lng
+        s["lat"] = s_lat
+        s["lng"] = s_lng
+        s["approximate"] = approx
 
     result["evacuation_shelters"] = shelters
 
@@ -559,11 +563,9 @@ def parse_disaster_json(raw_response: str | dict, query: str = "", resolved_plac
 
             if (not loc_lat or loc_lat == 0.0) and (not loc_lng or loc_lng == 0.0):
                 sm = resolve_marker(sector_name, anchor_lat, anchor_lon, offset_seed=idx + 1)
-                loc_lat = sm["lat"]
-                loc_lng = sm["lon"]
-                approx = sm.get("approximate", False)
+                loc_lat, loc_lng, approx = sm["lat"], sm["lon"], sm.get("approximate", False)
             else:
-                approx = False
+                loc_lat, loc_lng, approx = safe_marker_coords(sector_name, anchor_lat, anchor_lon, float(loc_lat), float(loc_lng))
 
             processed_locations.append({
                 "name": sector_name,
