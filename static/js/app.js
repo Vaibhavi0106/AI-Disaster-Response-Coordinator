@@ -91,6 +91,13 @@ function initEventListeners() {
     // Initialize GDACS Nearby Detection Handler
     initNearbyDetection();
 
+    // Zoom-Earth-Style Map Layers Listeners
+    document.querySelectorAll('.layer-row[data-layer]').forEach(btn => {
+        btn.addEventListener('click', () => {
+            selectMapLayer(btn.dataset.layer);
+        });
+    });
+
     // AI Copilot Interactions (Admin Only)
     if (copilotToggleBtn) {
         copilotToggleBtn.addEventListener('click', () => {
@@ -1806,3 +1813,124 @@ function initEmergencyFab() {
         });
     }
 }
+
+/**
+ * Zoom-Earth-Style Live Maps & Forecast Maps Layer Control Engine
+ */
+let currentOverlayLayer = null;
+
+const LAYER_DEFINITIONS = {
+  base: () => null,
+  satellite: () => L.tileLayer(
+    "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+    { attribution: "Esri, Maxar, Earthstar Geographics", maxZoom: 18 }
+  ),
+  hd: () => L.tileLayer(
+    "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+    { attribution: "Esri, Maxar, Earthstar Geographics", maxZoom: 19 }
+  ),
+  live: () => L.tileLayer(
+    `https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/VIIRS_SNPP_CorrectedReflectance_TrueColor/default/${getNasaGibsDate()}/GoogleMapsCompatible_Level9/{z}/{y}/{x}.jpg`,
+    { attribution: "NASA GIBS / VIIRS", maxZoom: 9 }
+  ),
+  radar: () => buildRainviewerLayer(),
+  precipitation: () => {
+    const key = window.OPENWEATHER_API_KEY || "REDACTED_OPENWEATHER_KEY";
+    return L.tileLayer(
+      `https://tile.openweathermap.org/map/precipitation_new/{z}/{x}/{y}.png?appid=${key}`,
+      { attribution: "OpenWeatherMap", opacity: 0.75 }
+    );
+  },
+  wind: () => {
+    const key = window.OPENWEATHER_API_KEY || "REDACTED_OPENWEATHER_KEY";
+    return L.tileLayer(
+      `https://tile.openweathermap.org/map/wind_new/{z}/{x}/{y}.png?appid=${key}`,
+      { attribution: "OpenWeatherMap", opacity: 0.75 }
+    );
+  },
+  temperature: () => {
+    const key = window.OPENWEATHER_API_KEY || "REDACTED_OPENWEATHER_KEY";
+    return L.tileLayer(
+      `https://tile.openweathermap.org/map/temp_new/{z}/{x}/{y}.png?appid=${key}`,
+      { attribution: "OpenWeatherMap", opacity: 0.75 }
+    );
+  },
+  humidity: () => {
+    const key = window.OPENWEATHER_API_KEY || "REDACTED_OPENWEATHER_KEY";
+    return L.tileLayer(
+      `https://tile.openweathermap.org/map/humidity_new/{z}/{x}/{y}.png?appid=${key}`,
+      { attribution: "OpenWeatherMap", opacity: 0.75 }
+    );
+  },
+  pressure: () => {
+    const key = window.OPENWEATHER_API_KEY || "REDACTED_OPENWEATHER_KEY";
+    return L.tileLayer(
+      `https://tile.openweathermap.org/map/pressure_new/{z}/{x}/{y}.png?appid=${key}`,
+      { attribution: "OpenWeatherMap", opacity: 0.75 }
+    );
+  }
+};
+
+async function buildRainviewerLayer() {
+    try {
+        const res = await fetch("https://api.rainviewer.com/public/weather-maps.json");
+        const data = await res.json();
+        if (data && data.radar && data.radar.past && data.radar.past.length > 0) {
+            const latestFrame = data.radar.past[data.radar.past.length - 1];
+            return L.tileLayer(
+                `https://tilecache.rainviewer.com${latestFrame.path}/256/{z}/{x}/{y}/2/1_1.png`,
+                { attribution: "RainViewer Radar", opacity: 0.75 }
+            );
+        }
+    } catch (err) {
+        console.warn('RainViewer API request error:', err);
+    }
+    const key = window.OPENWEATHER_API_KEY || "REDACTED_OPENWEATHER_KEY";
+    return L.tileLayer(
+        `https://tile.openweathermap.org/map/precipitation_new/{z}/{x}/{y}.png?appid=${key}`,
+        { attribution: "OpenWeatherMap Radar", opacity: 0.75 }
+    );
+}
+
+async function selectMapLayer(layerKey) {
+    if (!mapInstance) return;
+
+    if (currentOverlayLayer) {
+        try {
+            mapInstance.removeLayer(currentOverlayLayer);
+        } catch (e) {
+            console.warn('Error removing previous overlay layer:', e);
+        }
+        currentOverlayLayer = null;
+    }
+
+    const factory = LAYER_DEFINITIONS[layerKey];
+    if (factory) {
+        try {
+            const layer = await factory();
+            if (layer) {
+                layer.addTo(mapInstance);
+                currentOverlayLayer = layer;
+            }
+        } catch (e) {
+            console.error(`Failed to activate layer '${layerKey}':`, e);
+        }
+    }
+
+    document.querySelectorAll(".layer-row").forEach((el) => {
+        el.classList.toggle("active", el.dataset.layer === layerKey);
+    });
+}
+
+function toggleLayersPanel() {
+    const body = document.getElementById("mapLayersBody");
+    const chevron = document.getElementById("layersChevron");
+    if (body) {
+        const isHidden = body.style.display === "none";
+        body.style.display = isHidden ? "block" : "none";
+        if (chevron) {
+            chevron.classList.toggle("collapsed", !isHidden);
+        }
+    }
+}
+

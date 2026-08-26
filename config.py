@@ -13,6 +13,8 @@ class Config:
     # API Keys
     TAVILY_API_KEY = os.getenv("TAVILY_API_KEY", "").strip()
     OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "").strip()
+    OPENWEATHER_API_KEY = os.getenv("OPENWEATHER_API_KEY", "REDACTED_OPENWEATHER_KEY").strip()
+
     
     # Emergency SOS Webhook
     N8N_SOS_WEBHOOK_URL = os.getenv("N8N_SOS_WEBHOOK_URL", "").strip()

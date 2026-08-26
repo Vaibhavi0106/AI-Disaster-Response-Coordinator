@@ -116,7 +116,7 @@ def index():
     """
     current_user = session.get("user")
     user_role = current_user.get("role", "regular") if current_user else "regular"
-    return render_template("index.html", user=current_user, role=user_role)
+    return render_template("index.html", user=current_user, role=user_role, config=Config)
 
 
 @app.route("/report", methods=["GET"])
