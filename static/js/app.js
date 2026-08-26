@@ -1829,6 +1829,19 @@ const LAYER_DEFINITIONS = {
     "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
     { attribution: "Esri, Maxar, Earthstar Geographics", maxZoom: 19 }
   ),
+  nasa_gibs: () => {
+    const gibsDate = getNasaGibsDate();
+    return L.tileLayer(
+      `https://gibs-{s}.earthdata.nasa.gov/wmts/epsg3857/best/VIIRS_SNPP_CorrectedReflectance_TrueColor/default/${gibsDate}/GoogleMapsCompatible_Level9/{z}/{y}/{x}.jpg`,
+      {
+        attribution: "&copy; NASA GIBS / Earthdata",
+        subdomains: ["a", "b", "c"],
+        maxZoom: 19,
+        maxNativeZoom: 9,
+        opacity: 0.85
+      }
+    );
+  },
   precipitation: () => {
     const apiKey = window.OPENWEATHER_API_KEY || "REDACTED_OPENWEATHER_KEY";
     return L.tileLayer(
@@ -1930,6 +1943,10 @@ const LEGEND_DEFINITIONS = {
   satellite: `
     <div class="legend-title"><i class="bi bi-broadcast me-1 text-info"></i> SATELLITE IMAGERY INDEX</div>
     <div class="legend-desc">High-resolution optical surface imagery (Esri/Maxar) for inspecting river channels, flooded terrain, and infrastructure.</div>
+  `,
+  nasa_gibs: `
+    <div class="legend-title"><i class="bi bi-globe-americas me-1 text-info"></i> NASA VIIRS SATELLITE INDEX</div>
+    <div class="legend-desc">NASA GIBS (Earthdata) VIIRS true-color daily satellite imagery. Captures global cloud systems, smoke plumes, & major surface flooding.</div>
   `,
   radar: `
     <div class="legend-title"><i class="bi bi-radar me-1 text-warning"></i> LIVE DOPPLER RADAR INDEX</div>
