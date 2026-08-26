@@ -11,6 +11,8 @@ from sos_store import log_sos_event, list_sos_log, mark_sos_reviewed
 from gdacs_client import find_nearby_disasters
 from shelter_overrides import set_shelter_override, apply_shelter_overrides
 from alerts_store import add_alert, list_active_alerts, list_all_alerts, retract_alert
+from geocode_client import reverse_geocode, resolve_place, geocode_location
+
 
 # Configure Logging
 logging.basicConfig(
@@ -138,7 +140,7 @@ from geocode_client import reverse_geocode
 def analyze_disaster():
     """
     Main API endpoint for disaster query processing.
-    Receives JSON body: {"query": "Flood in Chennai"}
+    Receives JSON body: {"query": "Flood in Chennai", "latitude": 13.0827, "longitude": 80.2707}
     Returns role-filtered disaster analysis JSON payload.
     """
     try:
@@ -152,9 +154,22 @@ def analyze_disaster():
             }), 400
 
         logger.info(f"Processing disaster query request: '{query}'")
-        
+
+        # Obtain canonical resolved_place for request
+        lat = data.get("latitude") or data.get("lat")
+        lon = data.get("longitude") or data.get("lon") or data.get("lng")
+        if lat is not None and lon is not None:
+            try:
+                resolved_place = resolve_place(float(lat), float(lon))
+            except Exception:
+                geo = geocode_location(query)
+                resolved_place = resolve_place(geo["lat"], geo["lng"])
+        else:
+            geo = geocode_location(query)
+            resolved_place = resolve_place(geo["lat"], geo["lng"])
+
         # Execute LangChain Disaster Agent Workflow
-        result_json = disaster_agent.analyze_disaster(query)
+        result_json = disaster_agent.analyze_disaster(query, resolved_place=resolved_place)
         if "evacuation_shelters" in result_json and isinstance(result_json["evacuation_shelters"], list):
             result_json["evacuation_shelters"] = apply_shelter_overrides(result_json["evacuation_shelters"])
 
@@ -230,11 +245,12 @@ def nearby_disaster_lookup():
             }), 200
 
         top = nearby[0]
-        user_loc = reverse_geocode(lat_float, lon_float)
-        gdacs_place = top.get("country") or top.get("event_name") or "nearby region"
+        user_place = resolve_place(lat_float, lon_float)
+        user_location_label = user_place["short_label"]
+        gdacs_place = top.get("event_location_label") or top.get("country") or top.get("event_name") or "nearby region"
 
         # TWO separate queries — two separate pills:
-        local_query = f"Latest disaster or emergency situation near {user_loc['label']}"
+        local_query = f"Latest disaster or emergency situation near {user_location_label}"
         gdacs_query = f"{top['event_type']} near {gdacs_place}"
         gdacs_source_url = f"https://www.gdacs.org/report.aspx?eventid={top['eventid']}&eventtype={top['event_type_code']}"
 
@@ -251,10 +267,11 @@ def nearby_disaster_lookup():
         return jsonify({
             "status": "found",
             "local_query": local_query,
-            "user_location_label": user_loc["label"],
+            "user_location_label": user_location_label,
             "gdacs_query": gdacs_query,
             "event_type": top["event_type"],
             "gdacs_event_location": gdacs_place,
+            "affected_countries": top.get("affected_countries", []),
             "alert_level": top["alert_level"],
             "distance_km": top["distance_km"],
             "gdacs_source_url": gdacs_source_url
@@ -313,13 +330,14 @@ def nearby_disaster():
             }), 200
 
         top = nearby[0]
-        location_label = top.get("country") or top.get("event_name") or "nearby location"
-        query = f"{top['event_type']} near {location_label}"
+        user_place = resolve_place(lat_float, lon_float)
+        gdacs_place = top.get("event_location_label") or top.get("country") or "nearby location"
+        query = f"{top['event_type']} near {gdacs_place}"
         
         logger.info(f"📍 GDACS Nearby Event Detected: {query} ({top['distance_km']} km away)")
         
-        # Execute live analysis pipeline
-        result_json = disaster_agent.analyze_disaster(query)
+        # Execute live analysis pipeline anchored by user_place
+        result_json = disaster_agent.analyze_disaster(query, resolved_place=user_place)
         if "evacuation_shelters" in result_json and isinstance(result_json["evacuation_shelters"], list):
             result_json["evacuation_shelters"] = apply_shelter_overrides(result_json["evacuation_shelters"])
         
@@ -327,7 +345,9 @@ def nearby_disaster():
         result_json["gdacs_verified"] = True
         result_json["gdacs_alert_level"] = top["alert_level"]
         result_json["gdacs_distance_km"] = top["distance_km"]
+        result_json["gdacs_event_location"] = gdacs_place
         result_json["gdacs_source_url"] = f"https://www.gdacs.org/report.aspx?eventid={top['eventid']}&eventtype={top['event_type_code']}"
+        result_json["affected_countries"] = top.get("affected_countries", [])
 
         # Apply role-based filtering
         current_user = session.get("user")
@@ -351,6 +371,7 @@ def nearby_disaster():
             "status": "error",
             "message": f"Nearby disaster analysis failed: {str(e)}"
         }), 500
+
 
 
 @app.route("/api/copilot/chat", methods=["POST"])

@@ -247,13 +247,22 @@ function renderDashboard(data) {
     const gdacsBadge = document.getElementById('gdacsBadge');
     if (gdacsBadge) {
         if (data.gdacs_verified) {
-            const evType = data.gdacs_event_type ? `${data.gdacs_event_type} confirmed` : 'Event confirmed';
+            const evType = data.gdacs_event_type ? `${data.gdacs_event_type}` : 'Event';
             const alertLvl = data.gdacs_alert_level || 'Alert';
             const distKm = data.gdacs_distance_km || '0';
             const srcUrl = data.gdacs_source_url || 'https://www.gdacs.org';
+            const locLabel = data.gdacs_event_location || 'the target area';
             
-            gdacsBadge.className = 'badge bg-danger text-white border border-warning font-mono py-2 px-3 fs-7 shadow-sm d-inline-flex align-items-center gap-1';
-            gdacsBadge.innerHTML = `<a href="${srcUrl}" target="_blank" rel="noopener noreferrer" class="text-white text-decoration-none d-inline-flex align-items-center gap-1"><i class="bi bi-broadcast text-warning me-1"></i> 🛰️ GDACS Verified · ${evType} ${distKm} km away · Alert Level: ${alertLvl} <i class="bi bi-box-arrow-up-right ms-1 fs-8"></i></a>`;
+            let multiCountryHtml = '';
+            if (data.affected_countries && data.affected_countries.length > 1) {
+                const extraCountries = data.affected_countries.filter(c => !locLabel.toLowerCase().includes(c.toLowerCase()));
+                if (extraCountries.length > 0) {
+                    multiCountryHtml = `<div class="fs-8 text-warning mt-1"><i class="bi bi-globe me-1"></i> Also affecting: ${extraCountries.join(', ')}</div>`;
+                }
+            }
+            
+            gdacsBadge.className = 'badge bg-danger text-white border border-warning font-mono py-2 px-3 fs-7 shadow-sm d-inline-flex flex-column align-items-start gap-1';
+            gdacsBadge.innerHTML = `<a href="${srcUrl}" target="_blank" rel="noopener noreferrer" class="text-white text-decoration-none d-inline-flex align-items-center gap-1"><i class="bi bi-broadcast text-warning me-1"></i> 🛰️ GDACS Verified · ${evType} near ${locLabel} (${distKm} km away) · Alert: ${alertLvl} <i class="bi bi-box-arrow-up-right ms-1 fs-8"></i></a>${multiCountryHtml}`;
         } else {
             gdacsBadge.className = 'd-none';
             gdacsBadge.innerHTML = '';

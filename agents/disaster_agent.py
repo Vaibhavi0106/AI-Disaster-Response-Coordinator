@@ -11,13 +11,14 @@ class DisasterAgent:
     """
     Main LangChain Disaster Response Coordinator Agent.
     Executes OpenAI LLM + Tavily Search processing with complete telemetry extraction.
+    Accepts canonical resolved_place dict to anchor location analysis.
     """
 
     def __init__(self, search_agent: SearchAgent = None):
         self.search_agent = search_agent or SearchAgent()
         self.openai_key = Config.OPENAI_API_KEY
 
-    def analyze_disaster(self, query: str) -> dict:
+    def analyze_disaster(self, query: str, resolved_place: dict = None) -> dict:
         """
         Executes LangChain + OpenAI disaster analysis based on live Tavily search results.
         Returns a complete, validated disaster telemetry payload.
@@ -51,7 +52,7 @@ class DisasterAgent:
                 logger.info("✓ OpenAI Response Received")
 
                 raw_response = res.content
-                final_data = parse_disaster_json(raw_response, query=query)
+                final_data = parse_disaster_json(raw_response, query=query, resolved_place=resolved_place, llm=llm)
                 
                 if sources:
                     existing_sources = final_data.get("sources", [])
@@ -64,7 +65,11 @@ class DisasterAgent:
 
         # 3. Demonstration Fallback Mode
         logger.info(f"Using resilient fallback analysis engine for query: '{query}'")
-        fallback_json = parse_disaster_json({"summary": f"Operational telemetry check for {query}. Ground truth location reports requested."}, query=query)
+        fallback_json = parse_disaster_json(
+            {"summary": f"Operational telemetry check for {query}. Ground truth location reports requested."},
+            query=query,
+            resolved_place=resolved_place
+        )
         if sources:
             fallback_json["sources"] = list(dict.fromkeys(fallback_json.get("sources", []) + sources))
         return fallback_json

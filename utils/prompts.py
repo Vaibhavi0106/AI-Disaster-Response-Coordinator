@@ -1,7 +1,77 @@
 """
 Prompt definitions for AI Disaster Response Coordinator agents.
 Instructs LLM to perform accurate, reality-grounded severity classification (Critical, High, Medium, Low).
+Includes canonical place name extraction prompt to prevent query sentences from polluting place labels.
 """
+
+import re
+import logging
+
+logger = logging.getLogger(__name__)
+
+LOCATION_EXTRACTION_PROMPT = """Extract ONLY the specific place name from this disaster-related query. Return a short place name (city/town, state, country) — nothing else.
+
+Rules:
+- Do NOT include words like "latest," "disaster," "situation," "emergency," "near," "current," "reports," "bulletin."
+- Do NOT return a full sentence or phrase like "Latest Disaster Or Situation Near...".
+- If you cannot identify a specific place, return exactly: UNKNOWN
+
+Query: "{query}"
+
+Place name:"""
+
+
+def extract_place_name(query: str, llm=None) -> str | None:
+    """
+    Extracts a clean, canonical place name from a raw user query string.
+    Hard-guards against sentence leakage, banned words, or run-on phrases.
+    """
+    if not query or not query.strip():
+        return None
+
+    banned_words = {"latest", "disaster", "situation", "emergency", "near", "current", "report", "reports", "bulletin", "update", "updates"}
+
+    if llm:
+        try:
+            from langchain_core.prompts import ChatPromptTemplate
+            prompt = ChatPromptTemplate.from_template(LOCATION_EXTRACTION_PROMPT)
+            chain = prompt | llm
+            res = chain.invoke({"query": query})
+            raw = res.content.strip()
+
+            words = raw.lower().split()
+            if raw.upper() != "UNKNOWN" and len(words) <= 6 and not any(w in banned_words for w in words):
+                return raw
+        except Exception as e:
+            logger.warning(f"LLM location extraction failed: {e}")
+
+    # Pure python fallback clean-up
+    clean = query.strip()
+    prefixes = [
+        "latest disaster or emergency situation near",
+        "latest disaster or situation near",
+        "latest disaster near",
+        "disaster near",
+        "emergency near",
+        "situation near",
+        "latest disaster in",
+        "disaster in",
+        "emergency in"
+    ]
+    for p in prefixes:
+        if clean.lower().startswith(p):
+            clean = clean[len(p):].strip()
+            break
+
+    words = clean.split()
+    filtered = [w for w in words if re.sub(r'[^a-zA-Z]', '', w).lower() not in banned_words]
+    result = " ".join(filtered).strip()
+
+    if result and len(result.split()) <= 6 and result.upper() != "UNKNOWN":
+        return result
+
+    return None
+
 
 DISASTER_ANALYSIS_SYSTEM_PROMPT = """You are an AI Disaster Response Coordinator operating at an Emergency Operations Command Center (EOC).
 
