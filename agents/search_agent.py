@@ -28,7 +28,7 @@ class SearchAgent:
             from tavily import TavilyClient
             tavily_client = TavilyClient(api_key=self.api_key)
             response = tavily_client.search(
-                query=f"latest emergency disaster news updates {query}",
+                query=f"current weather emergency status breaking news {query}",
                 search_depth="advanced",
                 max_results=5
             )
