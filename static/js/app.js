@@ -91,6 +91,13 @@ function initEventListeners() {
     // Initialize GDACS Nearby Detection Handler
     initNearbyDetection();
 
+    // Live & Forecast Map Layer Button Listeners
+    document.querySelectorAll('.layer-row[data-layer]').forEach(btn => {
+        btn.addEventListener('click', () => {
+            selectMapLayer(btn.dataset.layer);
+        });
+    });
+
     // AI Copilot Interactions (Admin Only)
     if (copilotToggleBtn) {
         copilotToggleBtn.addEventListener('click', () => {
@@ -738,15 +745,11 @@ function initLeafletMap(locations, defaultSeverity) {
         }
 
         mapMarkers = [];
-        satelliteModeActive = false;
-        satelliteTileLayer = null;
+        activeMapLayer = null;
 
-        const satBtn = document.getElementById("satelliteToggleBtn");
-        const satBtnText = document.getElementById("satelliteBtnText");
-        const satBtnIcon = document.getElementById("satelliteBtnIcon");
-        if (satBtn) satBtn.classList.remove("active");
-        if (satBtnText) satBtnText.textContent = "Satellite Mode";
-        if (satBtnIcon) satBtnIcon.textContent = "🛰️";
+        document.querySelectorAll(".layer-row").forEach(el => el.classList.remove("active"));
+        const statusEl = document.getElementById("layerStatus");
+        if (statusEl) statusEl.textContent = "";
 
         let centerLat = 20.5937;
         let centerLng = 78.9629;
@@ -1817,37 +1820,122 @@ function initEmergencyFab() {
 }
 
 /**
- * Single-Button Satellite Basemap Toggle Engine
+ * Live & Forecast Map Layers Control Engine
  */
-let satelliteModeActive = false;
-let satelliteTileLayer = null;
+let activeMapLayer = null;
 
-function toggleSatelliteMode() {
+const LAYER_DEFINITIONS = {
+  satellite: () => L.tileLayer(
+    "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+    { attribution: "Esri, Maxar, Earthstar Geographics", maxZoom: 19 }
+  ),
+  precipitation: () => {
+    const apiKey = window.OPENWEATHER_API_KEY || "REDACTED_OPENWEATHER_KEY";
+    return L.tileLayer(
+      `https://tile.openweathermap.org/map/precipitation_new/{z}/{x}/{y}.png?appid=${apiKey}`,
+      { attribution: "OpenWeatherMap", opacity: 0.75 }
+    );
+  },
+  wind: () => {
+    const apiKey = window.OPENWEATHER_API_KEY || "REDACTED_OPENWEATHER_KEY";
+    return L.tileLayer(
+      `https://tile.openweathermap.org/map/wind_new/{z}/{x}/{y}.png?appid=${apiKey}`,
+      { attribution: "OpenWeatherMap", opacity: 0.75 }
+    );
+  },
+  temperature: () => {
+    const apiKey = window.OPENWEATHER_API_KEY || "REDACTED_OPENWEATHER_KEY";
+    return L.tileLayer(
+      `https://tile.openweathermap.org/map/temp_new/{z}/{x}/{y}.png?appid=${apiKey}`,
+      { attribution: "OpenWeatherMap", opacity: 0.75 }
+    );
+  },
+  humidity: () => {
+    const apiKey = window.OPENWEATHER_API_KEY || "REDACTED_OPENWEATHER_KEY";
+    return L.tileLayer(
+      `https://tile.openweathermap.org/map/humidity_new/{z}/{x}/{y}.png?appid=${apiKey}`,
+      { attribution: "OpenWeatherMap", opacity: 0.75 }
+    );
+  },
+  pressure: () => {
+    const apiKey = window.OPENWEATHER_API_KEY || "REDACTED_OPENWEATHER_KEY";
+    return L.tileLayer(
+      `https://tile.openweathermap.org/map/pressure_new/{z}/{x}/{y}.png?appid=${apiKey}`,
+      { attribution: "OpenWeatherMap", opacity: 0.75 }
+    );
+  }
+};
+
+async function buildRainviewerLayer(statusEl) {
+    try {
+        if (statusEl) statusEl.textContent = "Loading radar…";
+        const res = await fetch("https://api.rainviewer.com/public/weather-maps.json", { signal: AbortSignal.timeout(5000) });
+        if (!res.ok) throw new Error(`RainViewer returned ${res.status}`);
+        const data = await res.json();
+
+        const frames = data?.radar?.past;
+        if (!Array.isArray(frames) || frames.length === 0) {
+            throw new Error("No radar frames available");
+        }
+        const latestFrame = frames[frames.length - 1];
+
+        if (statusEl) statusEl.textContent = "";
+        return L.tileLayer(
+            `https://tilecache.rainviewer.com${latestFrame.path}/256/{z}/{x}/{y}/2/1_1.png`,
+            { attribution: "RainViewer Radar", opacity: 0.75 }
+        );
+    } catch (err) {
+        console.warn("Radar layer unavailable:", err);
+        if (statusEl) statusEl.textContent = "Radar data unavailable right now — try again shortly.";
+        return null;
+    }
+}
+
+async function selectMapLayer(layerKey) {
     if (!mapInstance) return;
 
-    const btn = document.getElementById("satelliteToggleBtn");
-    const btnText = document.getElementById("satelliteBtnText");
-    const btnIcon = document.getElementById("satelliteBtnIcon");
+    const statusEl = document.getElementById("layerStatus");
+    if (statusEl) statusEl.textContent = "";
 
-    if (satelliteModeActive) {
-        if (satelliteTileLayer) {
-            try { mapInstance.removeLayer(satelliteTileLayer); } catch (e) {}
-            satelliteTileLayer = null;
+    const targetRow = document.querySelector(`.layer-row[data-layer="${layerKey}"]`);
+    const isAlreadyActive = targetRow && targetRow.classList.contains("active");
+
+    if (activeMapLayer) {
+        try { mapInstance.removeLayer(activeMapLayer); } catch (e) {}
+        activeMapLayer = null;
+    }
+
+    document.querySelectorAll(".layer-row").forEach((el) => el.classList.remove("active"));
+
+    if (isAlreadyActive) {
+        // Toggled off layer, return to default CartoDB dark basemap
+        return;
+    }
+
+    let layer;
+    if (layerKey === "radar") {
+        layer = await buildRainviewerLayer(statusEl);
+        if (!layer) return;
+    } else if (LAYER_DEFINITIONS[layerKey]) {
+        layer = LAYER_DEFINITIONS[layerKey]();
+    }
+
+    if (layer) {
+        layer.addTo(mapInstance);
+        activeMapLayer = layer;
+        if (targetRow) targetRow.classList.add("active");
+    }
+}
+
+function toggleLayersPanel() {
+    const body = document.getElementById("mapLayersBody");
+    const chevron = document.getElementById("layersChevron");
+    if (body) {
+        const isHidden = body.style.display === "none";
+        body.style.display = isHidden ? "block" : "none";
+        if (chevron) {
+            chevron.classList.toggle("collapsed", !isHidden);
         }
-        satelliteModeActive = false;
-        if (btn) btn.classList.remove("active");
-        if (btnText) btnText.textContent = "Satellite Mode";
-        if (btnIcon) btnIcon.textContent = "🛰️";
-    } else {
-        satelliteTileLayer = L.tileLayer(
-            "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
-            { attribution: "Esri, Maxar, Earthstar Geographics", maxZoom: 19 }
-        );
-        satelliteTileLayer.addTo(mapInstance);
-        satelliteModeActive = true;
-        if (btn) btn.classList.add("active");
-        if (btnText) btnText.textContent = "Street Map Mode";
-        if (btnIcon) btnIcon.textContent = "🌐";
     }
 }
 
